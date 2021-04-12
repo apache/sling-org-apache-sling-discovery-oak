@@ -33,9 +33,9 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.discovery.base.connectors.announcement.Announcement;
 import org.apache.sling.discovery.base.connectors.announcement.AnnouncementRegistry;
-import org.apache.sling.hc.api.HealthCheck;
-import org.apache.sling.hc.api.Result;
-import org.apache.sling.hc.util.FormattingResultLog;
+import org.apache.felix.hc.api.HealthCheck;
+import org.apache.felix.hc.api.Result;
+import org.apache.felix.hc.api.FormattingResultLog;
 import org.apache.sling.settings.SlingSettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,7 +140,7 @@ public class SynchronizedClocksHealthCheck implements HealthCheck {
         } else {
             final Collection<Announcement> localAnnouncements = announcementRegistry.listLocalAnnouncements();
             if (localAnnouncements.isEmpty()) {
-                logger.info("execute: no topology connectors connected to local instance.");
+                logger.debug("execute: no topology connectors connected to local instance.");
                 resultLog.info("No topology connectors connected to local instance.");
             }
             for (Announcement ann : localAnnouncements) {
