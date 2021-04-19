@@ -110,8 +110,28 @@ public class OakClusterViewService implements ClusterViewService {
         ResourceResolver resourceResolver = null;
         try{
             resourceResolver = getResourceResolver();
-            DiscoveryLiteDescriptor descriptor =
-                    DiscoveryLiteDescriptor.getDescriptorFrom(resourceResolver);
+        } catch (Exception e) {
+            logger.error("getLocalClusterView: repository exception: "+e, e);
+            throw new UndefinedClusterViewException(Reason.REPOSITORY_EXCEPTION, "Exception while processing descriptor: "+e);
+        }
+        DiscoveryLiteDescriptor descriptor = null;
+        try {
+            descriptor = DiscoveryLiteDescriptor.getDescriptorFrom(resourceResolver);
+        } catch (Exception e) {
+            // SLING-10204 : log less noisy as this can legitimately happen
+            if (logger.isDebugEnabled()) {
+                logger.warn("getLocalClusterView: got Exception: "+e, e);
+            } else {
+                logger.warn("getLocalClusterView: got Exception: "+e);
+            }
+            throw new UndefinedClusterViewException(Reason.REPOSITORY_EXCEPTION, "Exception while processing descriptor: "+e);
+        } finally {
+            logger.trace("getLocalClusterView: end");
+            if (resourceResolver!=null) {
+                resourceResolver.close();
+            }
+        }
+        try {
             if (lastSeqNum!=descriptor.getSeqNum()) {
                 logger.info("getLocalClusterView: sequence number change detected - clearing idmap cache");
                 idMapService.clearCache();
@@ -122,11 +142,7 @@ public class OakClusterViewService implements ClusterViewService {
             logger.info("getLocalClusterView: undefined clusterView: "+e.getReason()+" - "+e.getMessage());
             throw e;
         } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().contains("No Descriptor value available")) {
-                logger.warn("getLocalClusterView: repository exception: "+e);
-            } else {
-                logger.error("getLocalClusterView: repository exception: "+e, e);
-            }
+            logger.error("getLocalClusterView: repository exception: "+e, e);
             throw new UndefinedClusterViewException(Reason.REPOSITORY_EXCEPTION, "Exception while processing descriptor: "+e);
         } finally {
             logger.trace("getLocalClusterView: end");
