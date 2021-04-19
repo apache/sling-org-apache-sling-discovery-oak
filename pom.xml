@@ -89,6 +89,61 @@
 		          </instructions>
 		        </configuration>
             </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>set-bundle-required-execution-environment</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <exportAntProperties>true</exportAntProperties>
+                            <target>
+                                <!--  apply fix as suggested in this comment:
+                                      https://issues.apache.org/jira/browse/MANTRUN-200?focusedCommentId=17016706&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-17016706 -->
+                                <property name="plugin_classpath" refid="maven.plugin.classpath"/>
+                                <script language="javascript" classpath="${plugin_classpath}">var System = java.lang.System;
+                                            var bree = "JavaSE-1.6";
+                                            var animalSnifferSignaturesVersion = "6";
+                                            var slingJavaVersion = System.getProperty("sling.java.version");
+                                            if (!slingJavaVersion) {
+                                                slingJavaVersion = project.getProperty("sling.java.version");
+                                            }
+                                            if (slingJavaVersion == "7") {
+                                                animalSnifferSignaturesVersion = "7";
+                                                bree = "JavaSE-1.7";
+                                                System.out.println("Setting Bundle-RequiredExecutionEnvironment=" + bree + " from sling.java.version=" + slingJavaVersion);
+                                            } else if ( slingJavaVersion == "8") {
+                                                animalSnifferSignaturesVersion = "8";
+                                                bree = "JavaSE-1.8";
+                                                System.out.println("Setting Bundle-RequiredExecutionEnvironment=" + bree + " from sling.java.version=" + slingJavaVersion);
+                                            } else if (slingJavaVersion != "6") {
+                                                System.out.println("Unsupported sling.java.version=" + slingJavaVersion + "; must be 6, 7 or 8.");
+                                                throw "sling.java.version must be 6, 7 or 8";
+                                            }
+                                            project.setProperty("sling.bree", bree);
+                                            project.setProperty("sling.animalSignatures.version", animalSnifferSignaturesVersion);</script>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.ant</groupId>
+                        <artifactId>ant-apache-regexp</artifactId>
+	                    <version>1.7.1</version>
+                        <scope>runtime</scope>
+                    </dependency>
+                    <dependency>
+                        <groupId>jakarta-regexp</groupId>
+                        <artifactId>jakarta-regexp</artifactId>
+                        <version>1.4</version>
+                        <scope>compile</scope>
+                    </dependency>
+                </dependencies>
+            </plugin>
         </plugins>
     </build>
     <profiles>
