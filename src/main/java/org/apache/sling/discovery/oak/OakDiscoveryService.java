@@ -394,11 +394,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
                 this.bindPropertyProviderInteral(propertyProvider, props);
             } catch (RuntimeException re) {
                 // SLING-10204 : catch and instead log less noisy as this can legitimately happen
-                if (logger.isDebugEnabled()) {
-                    logger.warn("bindPropertyProvider: got RuntimeException : " + re, re);
-                } else {
-                    logger.warn("bindPropertyProvider: got RuntimeException : " + re);
-                }
+                logger.warn("bindPropertyProvider: got RuntimeException (enable debug logging to see stacktrace) : " + re);
+                logger.debug("bindPropertyProvider: RuntimeException stacktrace", re);
             }
         }
     }
@@ -431,11 +428,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
                 this.bindPropertyProviderInteral(propertyProvider, props);
             } catch (RuntimeException re) {
                 // SLING-10204 : catch and instead log less noisy as this can legitimately happen
-                if (logger.isDebugEnabled()) {
-                    logger.warn("updatePropertyProvider: got RuntimeException : " + re, re);
-                } else {
-                    logger.warn("updatePropertyProvider: got RuntimeException : " + re);
-                }
+                logger.warn("updatePropertyProvider: got RuntimeException (enable debug logging to see stacktrace) : " + re);
+                logger.debug("updatePropertyProvider: RuntimeException stacktrace", re);
             }
         }
     }
@@ -452,11 +446,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
                 this.unbindPropertyProviderInternal(propertyProvider, props, true);
             } catch (RuntimeException re) {
                 // SLING-10204 : catch and instead log less noisy as this can legitimately happen
-                if (logger.isDebugEnabled()) {
-                    logger.warn("unbindPropertyProvider: got RuntimeException : " + re, re);
-                } else {
-                    logger.warn("unbindPropertyProvider: got RuntimeException : " + re);
-                }
+                logger.warn("unbindPropertyProvider: got RuntimeException (enable debug logging to see stacktrace) : " + re);
+                logger.debug("unbindPropertyProvider: RuntimeException stacktrace", re);
             }
         }
     }

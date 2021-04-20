@@ -119,11 +119,8 @@ public class OakClusterViewService implements ClusterViewService {
             descriptor = DiscoveryLiteDescriptor.getDescriptorFrom(resourceResolver);
         } catch (Exception e) {
             // SLING-10204 : log less noisy as this can legitimately happen
-            if (logger.isDebugEnabled()) {
-                logger.warn("getLocalClusterView: got Exception: "+e, e);
-            } else {
-                logger.warn("getLocalClusterView: got Exception: "+e);
-            }
+            logger.warn("getLocalClusterView: got Exception (enable debug logging to see stacktrace) : " + e);
+            logger.debug("getLocalClusterView: Exception stacktrace", e);
             throw new UndefinedClusterViewException(Reason.REPOSITORY_EXCEPTION, "Exception while processing descriptor: "+e);
         } finally {
             logger.trace("getLocalClusterView: end");

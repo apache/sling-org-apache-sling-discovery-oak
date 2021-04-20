@@ -796,11 +796,8 @@ public class TopologyWebConsolePlugin extends AbstractWebConsolePlugin implement
             }
         } catch(Exception e) {
             // SLING-10204 : log less noisy as this can legitimately happen
-            if (logger.isDebugEnabled()) {
-                logger.warn("addDiscoveryLiteHistoryEntry: got Exception : " + e, e);
-            } else {
-                logger.warn("addDiscoveryLiteHistoryEntry: got Exception : " + e);
-            }
+            logger.warn("addDiscoveryLiteHistoryEntry: got Exception (enable debug logging to see stacktrace) : " + e);
+            logger.debug("addDiscoveryLiteHistoryEntry: Exception stacktrace", e);
         } finally {
             if (resourceResolver != null) {
                 resourceResolver.close();
