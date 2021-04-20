@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import org.apache.sling.discovery.base.commons.ClusterViewService;
 import org.apache.sling.discovery.base.commons.UndefinedClusterViewException;
 import org.apache.sling.discovery.base.its.setup.VirtualInstance;
+import org.apache.sling.discovery.base.its.setup.mock.DummyResourceResolverFactory;
 import org.apache.sling.discovery.oak.its.setup.OakVirtualInstanceBuilder;
 import org.junit.Test;
 
@@ -62,5 +63,16 @@ public class OakClusterViewServiceTest {
         instance2.heartbeatsAndCheckView();
 
         assertNotNull(cvs1.getLocalClusterView());
+    }
+
+    @Test
+    public void testGetResourceResolverException() throws Exception {
+        OakClusterViewService cvs = OakClusterViewService.testConstructor(null, null, null, null);
+        try {
+            cvs.getLocalClusterView();
+            fail("should throw UndefinedClusterViewException");
+        } catch (UndefinedClusterViewException e) {
+            // ok
+        }
     }
 }
