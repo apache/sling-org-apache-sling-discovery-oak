@@ -25,7 +25,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.apache.sling.api.resource.LoginException;
@@ -38,6 +40,7 @@ import org.apache.sling.discovery.base.its.setup.OSGiMock;
 import org.apache.sling.discovery.base.its.setup.VirtualInstance;
 import org.apache.sling.discovery.base.its.setup.mock.DummyResourceResolverFactory;
 import org.apache.sling.discovery.base.its.setup.mock.MockFactory;
+import org.apache.sling.discovery.base.its.setup.mock.PropertyProviderImpl;
 import org.apache.sling.discovery.commons.providers.BaseTopologyView;
 import org.apache.sling.discovery.commons.providers.base.DummyListener;
 import org.apache.sling.discovery.commons.providers.spi.base.DescriptorHelper;
@@ -51,6 +54,7 @@ import org.apache.sling.discovery.oak.its.setup.OakVirtualInstanceBuilder;
 import org.apache.sling.discovery.oak.its.setup.SimulatedLease;
 import org.apache.sling.discovery.oak.its.setup.SimulatedLeaseCollection;
 import org.junit.Test;
+import org.osgi.framework.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -383,5 +387,31 @@ public class OakDiscoveryServiceTest {
         assertEquals(0, discoveryService.getViewStateManager().waitForAsyncEvents(2000));
         assertEquals(1, listener.countEvents());
         return listener.getLastView();
+    }
+
+    @Test
+    public void testPropertyProviderRegistrations() throws Exception{
+        OakVirtualInstanceBuilder builder =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance1")
+                .newRepository("/foo/barrio/foo/", true)
+                .setConnectorPingInterval(999)
+                .setConnectorPingTimeout(999);
+        VirtualInstance instance = builder.build();
+        OakDiscoveryService discoveryService = (OakDiscoveryService) instance.getDiscoveryService();
+        discoveryService.bindPropertyProvider(null, null);
+        discoveryService.unbindPropertyProvider(null, null);
+        discoveryService.updatedPropertyProvider(null, null);
+
+        PropertyProviderImpl p = new PropertyProviderImpl();
+        discoveryService.bindPropertyProvider(p, null);
+        discoveryService.unbindPropertyProvider(p, null);
+        discoveryService.updatedPropertyProvider(p, null);
+
+        Map<String, Object> m = new HashMap<>();
+        m.put(Constants.SERVICE_ID, 42L);
+        discoveryService.bindPropertyProvider(p, m);
+        discoveryService.unbindPropertyProvider(p, m);
+        discoveryService.updatedPropertyProvider(p, m);
     }
 }
