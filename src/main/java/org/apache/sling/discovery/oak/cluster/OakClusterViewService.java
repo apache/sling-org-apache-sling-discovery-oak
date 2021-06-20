@@ -80,6 +80,12 @@ public class OakClusterViewService implements ClusterViewService {
     /** the last sequence number read from the oak discovery-lite descriptor **/
     private long lastSeqNum = -1;
 
+    /** the lowest sequence number this class has handled (returned in asClusterView()) successfully */
+    private long lowestSeqNum = -1;
+
+    /** timeout (in millis since 1970) while partially started instances are suppressed */
+    private long partialStartupSuppressingTimeout = 0;
+
     public static OakClusterViewService testConstructor(SlingSettingsService settingsService,
             ResourceResolverFactory resourceResolverFactory,
             IdMapService idMapService,
@@ -152,12 +158,13 @@ public class OakClusterViewService implements ClusterViewService {
             logger.trace("asClusterView: no clusterId provided by discovery-lite descriptor - reading from repo.");
             clusterViewId = readOrDefineClusterId(resourceResolver);
         }
-        String localClusterSyncTokenId = /*descriptor.getViewId()+"_"+*/String.valueOf(descriptor.getSeqNum());
+        final long seqNum = descriptor.getSeqNum();
+        String localClusterSyncTokenId = /*descriptor.getViewId()+"_"+*/String.valueOf(seqNum);
         if (!descriptor.isFinal()) {
             throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW, "descriptor is not yet final: "+descriptor);
         }
         LocalClusterView cluster = new LocalClusterView(clusterViewId, localClusterSyncTokenId);
-        long me = descriptor.getMyId();
+        int me = descriptor.getMyId();
         int[] activeIds = descriptor.getActiveIds();
         if (activeIds==null || activeIds.length==0) {
             throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW, "Descriptor contained no active ids: "+descriptor.getDescriptorStr());
@@ -173,12 +180,21 @@ public class OakClusterViewService implements ClusterViewService {
         //   serves two purposes: pos[0] is then leader
         //   and the rest are properly sorted within the cluster
         final Map<Integer, String> leaderElectionIds = new HashMap<Integer, String>();
+        PartialStartupDetector partialStartupDetector = new PartialStartupDetector(resourceResolver, config,
+                lowestSeqNum, me, getSlingId(), seqNum, partialStartupSuppressingTimeout);
         for (Integer id : activeIdsList) {
             String slingId = idMapService.toSlingId(id, resourceResolver);
             if (slingId == null) {
                 idMapService.clearCache();
-                throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
-                        "no slingId mapped for clusterNodeId="+id);
+                if (partialStartupDetector.suppressMissingIdMap(id)) {
+                    continue;
+                } else {
+                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
+                            "no slingId mapped for clusterNodeId="+id);
+                }
+            }
+            if (partialStartupDetector.suppressMissingSyncToken(id, slingId)) {
+                continue;
             }
             String leaderElectionId = getLeaderElectionId(resourceResolver,
                     slingId);
@@ -188,17 +204,22 @@ public class OakClusterViewService implements ClusterViewService {
             // point of view - but upper level code here in discovery.oak has not yet
             // set the leaderElectionId. This is rare but valid case
             if (leaderElectionId == null) {
-                // then at this stage the clusterView is not yet established
-                // in a few moments it will but at this point not.
-                // so falling back to treating this as NO_ESTABLISHED_VIEW
-                // and with the heartbeat interval this situation will
-                // resolve itself upon one of the next pings
-                throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
-                        "no leaderElectionId available yet for slingId="+slingId);
+                if (partialStartupDetector.suppressMissingLeaderElectionId(id)) {
+                    continue;
+                } else {
+                    // then at this stage the clusterView is not yet established
+                    // in a few moments it will but at this point not.
+                    // so falling back to treating this as NO_ESTABLISHED_VIEW
+                    // and with the heartbeat interval this situation will
+                    // resolve itself upon one of the next pings
+                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
+                            "no leaderElectionId available yet for slingId="+slingId);
+                }
             }
             leaderElectionIds.put(id, leaderElectionId);
         }
 
+        activeIdsList.removeAll(partialStartupDetector.getPartiallyStartedClusterNodeIds());
         leaderElectionSort(activeIdsList, leaderElectionIds);
 
         for(int i=0; i<activeIdsList.size(); i++) {
@@ -218,6 +239,25 @@ public class OakClusterViewService implements ClusterViewService {
         logger.trace("asClusterView: returning {}", cluster);
         InstanceDescription local = cluster.getLocalInstance();
         if (local != null) {
+            if (lowestSeqNum == -1) {
+                // this starts partialStartup suppression (if all other conditions met)
+                lowestSeqNum = seqNum;
+            }
+            if (partialStartupDetector.getPartiallyStartedClusterNodeIds().isEmpty()) {
+                // success without suppressing -> reset the timeout
+                partialStartupSuppressingTimeout = 0;
+            } else {
+                // success with suppressing -> set the timeout (if not already set)
+                if (partialStartupSuppressingTimeout == 0) {
+                    final long suppressionTimeoutSeconds = config.getSuppressionTimeoutSeconds();
+                    if (suppressionTimeoutSeconds <= 0) {
+                        partialStartupSuppressingTimeout = 0;
+                    } else {
+                        partialStartupSuppressingTimeout = System.currentTimeMillis()
+                                + (suppressionTimeoutSeconds * 1000);
+                    }
+                }
+            }
             return cluster;
         } else {
             logger.info("getClusterView: the local instance ("+getSlingId()+") is currently not included in the existing established view! "

@@ -182,6 +182,7 @@ public class OakDiscoveryServiceTest {
         assertEquals(1, listener.countEvents());
 
         ResourceResolverFactory factory = instance1.getResourceResolverFactory();
+        @SuppressWarnings("unused")
         ResourceResolver resolver = factory.getServiceResourceResolver(null);
 
         instance1.heartbeatsAndCheckView();
@@ -278,6 +279,7 @@ public class OakDiscoveryServiceTest {
         dlb.me(2);
         DescriptorHelper.setDiscoveryLiteDescriptor(factory2, dlb);
 
+        @SuppressWarnings("unused")
         IdMapService secondIdMapService = IdMapService.testConstructor((DiscoveryLiteConfig) builder1.getConnectorConfig(), new DummySlingSettingsService(secondSlingId), factory2);
         
         instance1.heartbeatsAndCheckView();
@@ -344,17 +346,23 @@ public class OakDiscoveryServiceTest {
     public void testInvertedLeaderElectionOrder() throws Exception {
         logger.info("testInvertedLeaderElectionOrder: start");
         // instance1 should be leader
-        BaseTopologyView lastView = doTestInvertedLeaderElectionOrder(20, 10);
+        BaseTopologyView lastView = doTestInvertedLeaderElectionOrder(20, 10, false);
+        assertTrue(lastView.getLocalInstance().isLeader());
+        lastView = doTestInvertedLeaderElectionOrder(20, 10, true);
         assertTrue(lastView.getLocalInstance().isLeader());
         // instance2 should be leader
-        lastView = doTestInvertedLeaderElectionOrder(10, 20);
+        lastView = doTestInvertedLeaderElectionOrder(10, 20, false);
+        assertFalse(lastView.getLocalInstance().isLeader());
+        lastView = doTestInvertedLeaderElectionOrder(10, 20, true);
         assertFalse(lastView.getLocalInstance().isLeader());
         // instance1 should be leader
-        lastView = doTestInvertedLeaderElectionOrder(10, 10);
+        lastView = doTestInvertedLeaderElectionOrder(10, 10, false);
+        assertTrue(lastView.getLocalInstance().isLeader());
+        lastView = doTestInvertedLeaderElectionOrder(10, 10, true);
         assertTrue(lastView.getLocalInstance().isLeader());
     }
 
-    private BaseTopologyView doTestInvertedLeaderElectionOrder(final int instance1Prefix, final int instance2Prefix)
+    private BaseTopologyView doTestInvertedLeaderElectionOrder(final int instance1Prefix, final int instance2Prefix, boolean syncTokenEnabled)
             throws Exception {
         OakVirtualInstanceBuilder builder1 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -364,6 +372,8 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999);
         builder1.getConfig().leaderElectionPrefix = instance1Prefix;
         builder1.getConfig().invertLeaderElectionPrefixOrder = true;
+        builder1.getConfig().setSyncTokenEnabled(syncTokenEnabled);
+        builder1.getConfig().setJoinerDelaySeconds(0);
         VirtualInstance instance1 = builder1.build();
         OakVirtualInstanceBuilder builder2 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -373,19 +383,23 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999);
         builder2.getConfig().leaderElectionPrefix = instance2Prefix;
         builder2.getConfig().invertLeaderElectionPrefixOrder = true;
+        builder2.getConfig().setSyncTokenEnabled(syncTokenEnabled);
+        builder2.getConfig().setJoinerDelaySeconds(0);
         VirtualInstance instance2 = builder2.build();
     
         DummyListener listener = new DummyListener();
         OakDiscoveryService discoveryService = (OakDiscoveryService) instance1.getDiscoveryService();
         discoveryService.bindTopologyEventListener(listener);
     
-        instance1.heartbeatsAndCheckView();
         instance2.heartbeatsAndCheckView();
         instance1.heartbeatsAndCheckView();
         instance2.heartbeatsAndCheckView();
+        instance1.heartbeatsAndCheckView();
     
         assertEquals(0, discoveryService.getViewStateManager().waitForAsyncEvents(2000));
         assertEquals(1, listener.countEvents());
+        instance1.stop();
+        instance2.stop();
         return listener.getLastView();
     }
 
@@ -413,5 +427,353 @@ public class OakDiscoveryServiceTest {
         discoveryService.bindPropertyProvider(p, m);
         discoveryService.unbindPropertyProvider(p, m);
         discoveryService.updatedPropertyProvider(p, m);
+    }
+
+    @Test
+    public void simpleNewJoinerTest() throws Exception {
+        doSimpleNewJoinerTest(0);
+    }
+
+    @Test
+    public void simpleNewJoinerTestWithDelay() throws Exception {
+        doSimpleNewJoinerTest(2);
+    }
+
+    private void doSimpleNewJoinerTest(int joinerDelaySeconds) throws Exception {
+        OakVirtualInstanceBuilder builder1 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance1")
+                .newRepository("/foo/barrio/foo/", true)
+                .setConnectorPingInterval(999)
+                .setConnectorPingTimeout(999);
+        builder1.getConfig().setSyncTokenEnabled(true);
+        builder1.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
+        VirtualInstance instance1 = builder1.build();
+        DummyListener listener1 = new DummyListener();
+        OakDiscoveryService discoveryService1 = (OakDiscoveryService) instance1.getDiscoveryService();
+        discoveryService1.bindTopologyEventListener(listener1);
+
+        instance1.heartbeatsAndCheckView();
+        instance1.heartbeatsAndCheckView();
+
+        assertEquals(0, discoveryService1.getViewStateManager().waitForAsyncEvents(2000));
+        Thread.sleep(1000);
+        assertEquals(1, listener1.countEvents());
+
+        OakVirtualInstanceBuilder builder2 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance2")
+                .useRepositoryOf(instance1)
+                .setConnectorPingInterval(999)
+                .setConnectorPingTimeout(999);
+        builder2.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
+
+        // while we started instance 2, we don't let it heartbeat yet - just a lease update
+        // this simulates a situation where oak is up, but sling-repository not yet
+        builder2.updateLease();
+
+        // that way it shouldn't cause TOPOLOGY_CHANGING at instance 1 yet
+        instance1.heartbeatsAndCheckView();
+        instance1.heartbeatsAndCheckView();
+
+        assertEquals(0, discoveryService1.getViewStateManager().waitForAsyncEvents(2000));
+        assertEquals(1, listener1.countEvents());
+
+        instance1.heartbeatsAndCheckView();
+
+        builder2.getConfig().setSyncTokenEnabled(true);
+        VirtualInstance instance2 = builder2.build();
+        DummyListener listener2 = new DummyListener();
+        OakDiscoveryService discoveryService2 = (OakDiscoveryService) instance2.getDiscoveryService();
+        discoveryService2.bindTopologyEventListener(listener2);
+
+        instance2.heartbeatsAndCheckView();
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+
+        Thread.sleep((joinerDelaySeconds + 2) * 1000);
+
+        assertEquals(3, listener1.countEvents());
+        assertEquals(1, listener2.countEvents());
+
+        OakVirtualInstanceBuilder builder3 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance3")
+                .useRepositoryOf(instance1)
+                .setConnectorPingInterval(999)
+                .setConnectorPingTimeout(999);
+        builder3.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
+        builder3.updateLease();
+
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        for(int i=0; i<5; i++) {
+            Thread.sleep(300);
+            instance1.heartbeatsAndCheckView();
+            instance2.heartbeatsAndCheckView();
+            assertEquals(3, listener1.countEvents());
+            assertEquals(1, listener2.countEvents());
+        }
+
+        builder3.getConfig().setSyncTokenEnabled(true);
+        VirtualInstance instance3 = builder3.build();
+        DummyListener listener3 = new DummyListener();
+        OakDiscoveryService discoveryService3 = (OakDiscoveryService) instance3.getDiscoveryService();
+        discoveryService3.bindTopologyEventListener(listener3);
+
+        instance3.heartbeatsAndCheckView();
+
+        for(int i=0; i<4; i++) {
+            Thread.sleep(500);
+            instance1.heartbeatsAndCheckView();
+            instance2.heartbeatsAndCheckView();
+            instance3.heartbeatsAndCheckView();
+        }
+
+        Thread.sleep(joinerDelaySeconds * 1000);
+
+        assertEquals(1, listener3.countEvents());
+        assertEquals(5, listener1.countEvents());
+        assertEquals(3, listener2.countEvents());
+    }
+
+    @Test
+    public void testSingleStart() throws Exception {
+        // 1. start instance 1 normally
+        OakVirtualInstanceBuilder builder1 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance1")
+                .newRepository("/foo1/barrio/foo1/", true)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder1.getConfig().setMinEventDelay(1);
+        builder1.getConfig().setJoinerDelaySeconds(5);
+        builder1.getConfig().setSyncTokenEnabled(true);
+        // 1. start instance 1 normally -> call builder1.build()
+        VirtualInstance instance1 = builder1.build();
+        DummyListener listener1 = new DummyListener();
+        OakDiscoveryService discoveryService1 = (OakDiscoveryService) instance1.getDiscoveryService();
+        discoveryService1.bindTopologyEventListener(listener1);
+        instance1.heartbeatsAndCheckView();
+
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        assertEquals(1, listener1.countEvents());
+    }
+
+    @Test
+    public void testFullPartialFullFullStart() throws Exception {
+        // 1. start instance 1 normally
+        // 2. start instance 2 only partially -> gets ignored by 1
+        // 3. start instance 3 + 4 fully -> they should wait for (4/3 and 2)
+        // 4. then start instance 2 fully -> 3 and 4 should get resolved
+        OakVirtualInstanceBuilder builder1 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance1")
+                .newRepository("/foo1/barrio/foo1/", true)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder1.getConfig().setMinEventDelay(1);
+        builder1.getConfig().setJoinerDelaySeconds(5);
+        builder1.getConfig().setSyncTokenEnabled(true);
+        // 1. start instance 1 normally -> call builder1.build()
+        VirtualInstance instance1 = builder1.build();
+        DummyListener listener1 = new DummyListener();
+        OakDiscoveryService discoveryService1 = (OakDiscoveryService) instance1.getDiscoveryService();
+        discoveryService1.bindTopologyEventListener(listener1);
+        instance1.heartbeatsAndCheckView();
+
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        assertEquals(1, listener1.countEvents());
+
+        OakVirtualInstanceBuilder builder2 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance2")
+                .useRepositoryOf(builder1)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder2.getConfig().setJoinerDelaySeconds(5);
+        builder2.getConfig().setSyncTokenEnabled(true);
+        // 2. start instance 2 only partially -> do not call builder2.build() but just updateLease()
+        builder2.updateLease();
+
+        Thread.sleep(1000);
+
+        OakVirtualInstanceBuilder builder3 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance3")
+                .useRepositoryOf(builder1)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder3.getConfig().setJoinerDelaySeconds(5);
+        builder3.getConfig().setSyncTokenEnabled(true);
+        // 3. start instance 3 + 4 fully -> builder3.build()
+        VirtualInstance instance3 = builder3.build();
+        DummyListener listener3 = new DummyListener();
+        OakDiscoveryService discoveryService3 = (OakDiscoveryService) instance3.getDiscoveryService();
+        discoveryService3.bindTopologyEventListener(listener3);
+
+        OakVirtualInstanceBuilder builder4 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance4")
+                .useRepositoryOf(builder1)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder4.getConfig().setJoinerDelaySeconds(5);
+        builder4.getConfig().setSyncTokenEnabled(true);
+        // 3. start instance 3 + 4 fully -> builder4.build()
+        VirtualInstance instance4 = builder4.build();
+        DummyListener listener4 = new DummyListener();
+        OakDiscoveryService discoveryService4 = (OakDiscoveryService) instance4.getDiscoveryService();
+        discoveryService4.bindTopologyEventListener(listener4);
+
+        instance1.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        instance4.heartbeatsAndCheckView();
+        for(int i=0; i<7; i++) {
+            Thread.sleep(1000);
+            instance1.heartbeatsAndCheckView();
+            instance3.heartbeatsAndCheckView();
+            instance4.heartbeatsAndCheckView();
+        }
+
+        assertEquals(0, listener3.countEvents());
+        assertEquals(0, listener4.countEvents());
+
+        // 4. then start instance 2 fully -> 3 and 4 should get resolved
+        VirtualInstance instance2 = builder2.build();
+
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        instance4.heartbeatsAndCheckView();
+        assertEquals(0, listener3.countEvents());
+        assertEquals(0, listener4.countEvents());
+        for(int i=0; i<7; i++) {
+            Thread.sleep(1000);
+            instance1.heartbeatsAndCheckView();
+            instance2.heartbeatsAndCheckView();
+            instance3.heartbeatsAndCheckView();
+            instance4.heartbeatsAndCheckView();
+        }
+
+        assertEquals(1, listener3.countEvents());
+        assertEquals(1, listener4.countEvents());
+    }
+
+    @Test
+    public void testUpdateDuringJoinDelay() throws Exception {
+        OakVirtualInstanceBuilder builder1 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance1")
+                .newRepository("/foo1/barrio/foo1/", true)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder1.getConfig().setMinEventDelay(1);
+        builder1.getConfig().setJoinerDelaySeconds(5);
+        builder1.getConfig().setSyncTokenEnabled(true);
+        // 1. start instance 1 normally -> call builder1.build()
+        VirtualInstance instance1 = builder1.build();
+        DummyListener listener1 = new DummyListener();
+        OakDiscoveryService discoveryService1 = (OakDiscoveryService) instance1.getDiscoveryService();
+        discoveryService1.bindTopologyEventListener(listener1);
+        instance1.heartbeatsAndCheckView();
+
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        assertEquals(1, listener1.countEvents());
+
+        OakVirtualInstanceBuilder builder2 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance2")
+                .useRepositoryOf(builder1)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder2.getConfig().setJoinerDelaySeconds(5);
+        builder2.getConfig().setSyncTokenEnabled(true);
+        builder1.getConfig().setMinEventDelay(1);
+        // 2. start instance 2 only partially -> do not call builder2.build() but just updateLease()
+        builder2.updateLease();
+
+        Thread.sleep(2000);
+        assertEquals(1, listener1.countEvents());
+
+        // joinDelay timer starts with building (plus 1sec for minEventDelay)
+        VirtualInstance instance2 = builder2.build();
+        DummyListener listener2 = new DummyListener();
+        OakDiscoveryService discoveryService2 = (OakDiscoveryService) instance2.getDiscoveryService();
+        discoveryService2.bindTopologyEventListener(listener2);
+
+        Thread.sleep(1000);
+        assertEquals(0, listener2.countEvents());
+
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+
+        assertEquals(3, listener1.countEvents());
+        assertEquals(0, listener2.countEvents());
+
+        OakVirtualInstanceBuilder builder3 =
+                (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
+                .setDebugName("instance3")
+                .useRepositoryOf(builder1)
+                .setConnectorPingInterval(999999)
+                .setConnectorPingTimeout(999999);
+        builder3.getConfig().setMinEventDelay(1);
+        builder3.getConfig().setJoinerDelaySeconds(5);
+        builder3.getConfig().setSyncTokenEnabled(true);
+        VirtualInstance instance3 = builder3.build();
+        DummyListener listener3 = new DummyListener();
+        OakDiscoveryService discoveryService3 = (OakDiscoveryService) instance3.getDiscoveryService();
+        discoveryService3.bindTopologyEventListener(listener3);
+
+        // 3 started, now let 1 and 3 send heartbeats, 2 not
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        // now it's 6sec, so the joinDelay of 2 should have timed out,
+        // however, as we started instance 3 the view of 2 should now have changed
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        assertEquals(5, listener1.countEvents());
+        assertEquals(1, listener2.countEvents());
+
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+        Thread.sleep(1000);
+        instance1.heartbeatsAndCheckView();
+        instance2.heartbeatsAndCheckView();
+        instance3.heartbeatsAndCheckView();
+
+        // check all the listeners
+        assertEquals(5, listener1.countEvents());
+        assertEquals(1, listener2.countEvents());
+        assertEquals(1, listener3.countEvents());
     }
 }

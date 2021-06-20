@@ -231,7 +231,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             ClusterSyncHistory consistencyHistory = new ClusterSyncHistory();
             oakBacklogClusterSyncService.setConsistencyHistory(consistencyHistory);
             syncTokenService.setConsistencyHistory(consistencyHistory);
-            consistencyService = new ClusterSyncServiceChain(oakBacklogClusterSyncService, syncTokenService);
+            JoinerDelay joinerDelay = new JoinerDelay(config.getJoinerDelayMillis(), scheduler);
+            consistencyService = new ClusterSyncServiceChain(oakBacklogClusterSyncService, syncTokenService, joinerDelay);
         } else {
             consistencyService = oakBacklogClusterSyncService;
 

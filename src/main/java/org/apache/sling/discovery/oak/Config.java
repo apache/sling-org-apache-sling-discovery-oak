@@ -189,6 +189,21 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     private static final String INVERT_LEADER_ELECTION_PREFIX_ORDER = "invertLeaderElectionPrefixOrder";
     protected boolean invertLeaderElectionPrefixOrder = DEFAULT_INVERT_LEADER_ELECTION_PREFIX_ORDER;
     
+    private static final boolean DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES = true;
+    @Property(boolValue=DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES)
+    private static final String SUPPRESS_PARTIALLY_STARTED_INSTANCES = "suppressPartiallyStartedInstance";
+    protected boolean suppressPartiallyStartedInstance = DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES;
+
+    private static final long DEFAULT_SUPPRESSION_TIMEOUT_SECONDS = -1;
+    @Property(longValue=DEFAULT_SUPPRESSION_TIMEOUT_SECONDS)
+    private static final String SUPPRESSION_TIMEOUT_SECONDS = "suppressionTimeoutSeconds";
+    protected long suppressionTimeoutSeconds = DEFAULT_SUPPRESSION_TIMEOUT_SECONDS;
+
+    private static final long DEFAULT_JOINER_DELAY_SECONDS = 30;
+    @Property(longValue=DEFAULT_JOINER_DELAY_SECONDS)
+    private static final String JOINER_DELAY_SECONDS = "joinerDelaySeconds";
+    protected long joinerDelaySeconds = DEFAULT_JOINER_DELAY_SECONDS;
+
     /** True when auto-stop of a local-loop is enabled. Default is false. **/
     private boolean autoStopLocalLoopEnabled;
     
@@ -360,6 +375,24 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
                 DEFAULT_LEADER_ELECTION_PREFIX);
         logger.debug("configure: leaderElectionPrefix='{}'",
                 this.leaderElectionPrefix);
+
+        this.suppressPartiallyStartedInstance = PropertiesUtil.toBoolean(
+                properties.get(SUPPRESS_PARTIALLY_STARTED_INSTANCES),
+                DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES);
+        logger.debug("configure: suppressPartiallyStartedInstance='{}'",
+                this.suppressPartiallyStartedInstance);
+
+        this.suppressionTimeoutSeconds = PropertiesUtil.toLong(
+                properties.get(SUPPRESSION_TIMEOUT_SECONDS),
+                DEFAULT_SUPPRESSION_TIMEOUT_SECONDS);
+        logger.debug("configure: suppressionTimeoutSeconds='{}'",
+                this.suppressionTimeoutSeconds);
+
+        this.joinerDelaySeconds = PropertiesUtil.toLong(
+                properties.get(JOINER_DELAY_SECONDS),
+                DEFAULT_JOINER_DELAY_SECONDS);
+        logger.debug("configure: joinerDelaySeconds='{}'",
+                this.joinerDelaySeconds);
     }
 
     /**
@@ -534,5 +567,17 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
 
     public long getLeaderElectionPrefix() {
         return leaderElectionPrefix;
+    }
+
+    public boolean getSuppressPartiallyStartedInstances() {
+        return suppressPartiallyStartedInstance;
+    }
+
+    public long getSuppressionTimeoutSeconds() {
+        return suppressionTimeoutSeconds;
+    }
+
+    public long getJoinerDelayMillis() {
+        return Math.max(0, joinerDelaySeconds * 1000);
     }
 }
