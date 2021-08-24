@@ -19,15 +19,19 @@
 package org.apache.sling.discovery.oak.cluster;
 
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
+import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
@@ -46,6 +50,7 @@ import org.apache.sling.discovery.commons.providers.DefaultInstanceDescription;
 import org.apache.sling.discovery.commons.providers.spi.LocalClusterView;
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteDescriptor;
 import org.apache.sling.discovery.commons.providers.spi.base.IdMapService;
+import org.apache.sling.discovery.commons.providers.util.LogSilencer;
 import org.apache.sling.discovery.commons.providers.util.ResourceHelper;
 import org.apache.sling.discovery.oak.Config;
 import org.apache.sling.settings.SlingSettingsService;
@@ -86,6 +91,14 @@ public class OakClusterViewService implements ClusterViewService {
     /** timeout (in millis since 1970) while partially started instances are suppressed */
     private long partialStartupSuppressingTimeout = 0;
 
+    /**
+     * Keeps track of which id existed in the local cluster - to avoid suppressing those.
+     * Note that discovery clusters aren't usually terribly big - so this map shouldn't grow too large ever.
+     **/
+    private final Set<Integer> seenLocalInstances = new HashSet<>();
+
+    private final LogSilencer logSilencer = new LogSilencer(logger);
+
     public static OakClusterViewService testConstructor(SlingSettingsService settingsService,
             ResourceResolverFactory resourceResolverFactory,
             IdMapService idMapService,
@@ -95,7 +108,14 @@ public class OakClusterViewService implements ClusterViewService {
         service.resourceResolverFactory = resourceResolverFactory;
         service.config = config;
         service.idMapService = idMapService;
+        service.activate();
         return service;
+    }
+
+    @Activate
+    public void activate() {
+        final String suppressPartiallyStartedInstances = config == null ? "unknown" : String.valueOf(config.getSuppressPartiallyStartedInstances());
+        logger.info("activate: suppressPartiallyStartedInstances = " + suppressPartiallyStartedInstances);
     }
 
     @Override
@@ -181,19 +201,20 @@ public class OakClusterViewService implements ClusterViewService {
         //   and the rest are properly sorted within the cluster
         final Map<Integer, String> leaderElectionIds = new HashMap<Integer, String>();
         PartialStartupDetector partialStartupDetector = new PartialStartupDetector(resourceResolver, config,
-                lowestSeqNum, me, getSlingId(), seqNum, partialStartupSuppressingTimeout);
+                lowestSeqNum, me, getSlingId(), seqNum, partialStartupSuppressingTimeout, logSilencer);
         for (Integer id : activeIdsList) {
+            final boolean considerSuppressing = !seenLocalInstances.contains(id);
             String slingId = idMapService.toSlingId(id, resourceResolver);
             if (slingId == null) {
                 idMapService.clearCache();
-                if (partialStartupDetector.suppressMissingIdMap(id)) {
+                if (considerSuppressing && partialStartupDetector.suppressMissingIdMap(id)) {
                     continue;
                 } else {
                     throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
                             "no slingId mapped for clusterNodeId="+id);
                 }
             }
-            if (partialStartupDetector.suppressMissingSyncToken(id, slingId)) {
+            if (considerSuppressing && partialStartupDetector.suppressMissingSyncToken(id, slingId)) {
                 continue;
             }
             String leaderElectionId = getLeaderElectionId(resourceResolver,
@@ -204,7 +225,7 @@ public class OakClusterViewService implements ClusterViewService {
             // point of view - but upper level code here in discovery.oak has not yet
             // set the leaderElectionId. This is rare but valid case
             if (leaderElectionId == null) {
-                if (partialStartupDetector.suppressMissingLeaderElectionId(id)) {
+                if (considerSuppressing && partialStartupDetector.suppressMissingLeaderElectionId(id)) {
                     continue;
                 } else {
                     // then at this stage the clusterView is not yet established
@@ -219,7 +240,8 @@ public class OakClusterViewService implements ClusterViewService {
             leaderElectionIds.put(id, leaderElectionId);
         }
 
-        activeIdsList.removeAll(partialStartupDetector.getPartiallyStartedClusterNodeIds());
+        Collection<Integer> partiallyStartedClusterNodeIds = partialStartupDetector.getPartiallyStartedClusterNodeIds();
+        activeIdsList.removeAll(partiallyStartedClusterNodeIds);
         leaderElectionSort(activeIdsList, leaderElectionIds);
 
         for(int i=0; i<activeIdsList.size(); i++) {
@@ -235,7 +257,20 @@ public class OakClusterViewService implements ClusterViewService {
             Map<String, String> properties = readProperties(slingId, resourceResolver);
             // create a new instance (adds itself to the cluster in the constructor)
             new DefaultInstanceDescription(cluster, isLeader, isOwn, slingId, properties);
+
+            if (seenLocalInstances.add(id)) {
+                logger.info("asClusterView : seen clusterNodeId = " + id + " (slingId=" + slingId +
+                        "), list.size=" + seenLocalInstances.size());
+            }
         }
+        if (!partiallyStartedClusterNodeIds.isEmpty()) {
+            logSilencer.infoOrDebug("asClusterView : adding as partially started slingIds: clusterNodeIds = " +
+                        partiallyStartedClusterNodeIds);
+            cluster.setPartiallyStartedClusterNodeIds(partiallyStartedClusterNodeIds);
+        } else {
+            logSilencer.reset();
+        }
+
         logger.trace("asClusterView: returning {}", cluster);
         InstanceDescription local = cluster.getLocalInstance();
         if (local != null) {
@@ -243,7 +278,7 @@ public class OakClusterViewService implements ClusterViewService {
                 // this starts partialStartup suppression (if all other conditions met)
                 lowestSeqNum = seqNum;
             }
-            if (partialStartupDetector.getPartiallyStartedClusterNodeIds().isEmpty()) {
+            if (partiallyStartedClusterNodeIds.isEmpty()) {
                 // success without suppressing -> reset the timeout
                 partialStartupSuppressingTimeout = 0;
             } else {

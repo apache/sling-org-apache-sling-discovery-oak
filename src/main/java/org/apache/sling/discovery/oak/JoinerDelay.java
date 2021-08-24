@@ -23,8 +23,11 @@ import java.util.Date;
 import org.apache.sling.commons.scheduler.Job;
 import org.apache.sling.commons.scheduler.JobContext;
 import org.apache.sling.commons.scheduler.Scheduler;
+import org.apache.sling.discovery.ClusterView;
 import org.apache.sling.discovery.commons.providers.BaseTopologyView;
 import org.apache.sling.discovery.commons.providers.spi.ClusterSyncService;
+import org.apache.sling.discovery.commons.providers.spi.LocalClusterView;
+import org.apache.sling.discovery.commons.providers.util.LogSilencer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,6 +107,8 @@ public class JoinerDelay implements ClusterSyncService {
     private Phase phase = Phase.IDLE;
     private Date absoluteTimeout;
 
+    private final LogSilencer logSilencer = new LogSilencer(logger);
+
     public JoinerDelay(long timeoutMs, Scheduler scheduler) {
         this.timeoutMs = timeoutMs;
         this.scheduler = scheduler;
@@ -118,7 +123,18 @@ public class JoinerDelay implements ClusterSyncService {
     /** check whether the given view reflects a 'joining a cluster with existing instances' condition */
     private boolean joinerConditionApplies(BaseTopologyView view) {
         try {
-            return view.getLocalInstance().getClusterView().getInstances().size() > 1;
+            final ClusterView clusterView = view.getLocalInstance().getClusterView();
+            if (clusterView.getInstances().size() > 1) {
+                return true;
+            }
+            if (clusterView instanceof LocalClusterView) {
+                final LocalClusterView localClusterView = (LocalClusterView) clusterView;
+                if (localClusterView.hasPartiallyStartedInstances()) {
+                    logSilencer.infoOrDebug("joinerConditionApplies", "joinerConditionApplies : local cluster has partially started instances - delaying");
+                    return true;
+                }
+            }
+            return false;
         } catch(Exception e) {
             logger.error("joinerConditionApplies : got Exception, ignoring JoinerDelay (log level debug shows stacktrace): " + e);
             logger.debug("joinerConditionApplies : got Exception, ignoring JoinerDelay : " + e, e);
@@ -151,6 +167,7 @@ public class JoinerDelay implements ClusterSyncService {
             }
             isPhaseDone = phase == Phase.DONE;
         }
+        logSilencer.infoOrDebug("sync-status", "sync: isPhaseDone : " + isPhaseDone);
         if (isPhaseDone) {
             // invoke callback (outside synchronization)
             callback.run();
@@ -212,6 +229,7 @@ public class JoinerDelay implements ClusterSyncService {
             absoluteTimeout = null;
             phase = Phase.DONE;
             logger.info("markDone : no longer delaying topology join");
+            logSilencer.reset();
         }
     }
 }

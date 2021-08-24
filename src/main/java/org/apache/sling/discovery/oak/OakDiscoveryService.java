@@ -157,7 +157,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             OakViewChecker checker = oakViewChecker;
             if (activated && checker != null
                     && (event.getType() == Type.TOPOLOGY_CHANGED || event.getType() == Type.PROPERTIES_CHANGED)) {
-                logger.info("changePropagationListener.handleTopologyEvent: topology changed - propagate through connectors");
+                logger.debug("changePropagationListener.handleTopologyEvent: topology changed - propagate through connectors");
                 checker.triggerAsyncConnectorPing();
             }
         }

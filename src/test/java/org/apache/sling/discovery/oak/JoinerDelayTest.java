@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -41,6 +42,7 @@ import org.apache.sling.discovery.commons.providers.BaseTopologyView;
 import org.apache.sling.discovery.commons.providers.DefaultClusterView;
 import org.apache.sling.discovery.commons.providers.DummyTopologyView;
 import org.apache.sling.discovery.commons.providers.base.DummyScheduler;
+import org.apache.sling.discovery.commons.providers.spi.LocalClusterView;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -196,14 +198,14 @@ public class JoinerDelayTest {
     public void testSync_withoutDelay() throws Exception {
         JoinerDelay joinerDelay = new JoinerDelay(0, scheduler);
         joinerDelay.sync(view, callback);
-        assertTrue(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertTrue(callbackSemaphore.tryAcquire());
     }
 
     @Test
     public void testSync_withDelay() throws Exception {
         JoinerDelay joinerDelay = new JoinerDelay(1000, scheduler);
         joinerDelay.sync(view, callback);
-        assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertFalse(callbackSemaphore.tryAcquire());
         assertTrue(callbackSemaphore.tryAcquire(5, TimeUnit.SECONDS));
     }
 
@@ -221,9 +223,9 @@ public class JoinerDelayTest {
     public void testSync_withDelayAnd2ReSync() throws Exception {
         JoinerDelay joinerDelay = new JoinerDelay(1000, scheduler);
         joinerDelay.sync(view, callback);
-        assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertFalse(callbackSemaphore.tryAcquire());
         joinerDelay.sync(view, callback);
-        assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertFalse(callbackSemaphore.tryAcquire());
         assertTrue(callbackSemaphore.tryAcquire(5, TimeUnit.SECONDS));
         // callback should only be invoked once - otherwise the re-sync is not done correctly
         assertFalse(callbackSemaphore.tryAcquire(2, TimeUnit.SECONDS));
@@ -251,7 +253,7 @@ public class JoinerDelayTest {
                 joinerDelay.cancelSync();
             }
             joinerDelay.sync(view, callback);
-            assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+            assertFalse(callbackSemaphore.tryAcquire());
         }
         assertTrue(callbackSemaphore.tryAcquire(5, TimeUnit.SECONDS));
         // callback should only be invoked once - otherwise the re-sync is not done correctly
@@ -264,10 +266,34 @@ public class JoinerDelayTest {
         joinerDelay.cancelSync();
         joinerDelay.sync(view, callback);
         joinerDelay.cancelSync();
-        assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertFalse(callbackSemaphore.tryAcquire());
         Thread.sleep(2500);
-        assertFalse(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertFalse(callbackSemaphore.tryAcquire());
         joinerDelay.sync(view, callback);
-        assertTrue(callbackSemaphore.tryAcquire(0, TimeUnit.MILLISECONDS));
+        assertTrue(callbackSemaphore.tryAcquire());
+    }
+
+    @Test
+    public void testSingleStartup() throws Exception {
+        DefaultClusterView cluster = new DefaultClusterView(UUID.randomUUID().toString());
+        view = new DummyTopologyView()
+                .addInstance(UUID.randomUUID().toString(), cluster, true, true);
+        JoinerDelay joinerDelay = new JoinerDelay(2000, scheduler);
+        joinerDelay.sync(view, callback);
+        assertTrue(callbackSemaphore.tryAcquire());
+    }
+
+    @Test
+    public void testPartialJoin() throws Exception {
+        final LocalClusterView cluster = new LocalClusterView(UUID.randomUUID().toString(), "any");
+        view = new DummyTopologyView()
+                .addInstance(UUID.randomUUID().toString(), cluster, true, true);
+        cluster.setPartiallyStartedClusterNodeIds(Arrays.asList(2));
+
+        JoinerDelay joinerDelay = new JoinerDelay(2000, scheduler);
+        joinerDelay.sync(view, callback);
+        assertFalse(callbackSemaphore.tryAcquire());
+        Thread.sleep(2500);
+        assertTrue(callbackSemaphore.tryAcquire());
     }
 }

@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ValueMap;
+import org.apache.sling.discovery.commons.providers.util.LogSilencer;
 import org.apache.sling.discovery.oak.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,15 +71,20 @@ public class PartialStartupDetector {
     private final boolean suppressingApplicable;
     private final Set<Integer> partiallyStartedClusterNodeIds = new HashSet<>();
 
+    private final LogSilencer logSilencer;
+
     /**
      * @param lowestLocalSeqNum the lowest sequence number which
      * the local OakClusterViewService has handled as part of asClusterView
      * @param me the clusterNodeId (provided by oak) of the local instance (==me)
+     * @param localSlingIds slingId previously seen by this cluster instance (those will not be suppressed)
      * @param timeoutMillis -1 or 0 disables the timeout, otherwise the suppression
      * is only done for the provided maximum number of milliseconds.
+     * @param logSilencer
      */
     PartialStartupDetector(ResourceResolver resourceResolver, Config config,
-            long lowestLocalSeqNum, int me, String mySlingId, long currentSeqNum, long timeoutMillis) {
+            long lowestLocalSeqNum, int me, String mySlingId, long currentSeqNum, long timeoutMillis,
+            LogSilencer logSilencer) {
         this.resourceResolver = resourceResolver;
         this.config = config;
         this.me = me;
@@ -96,10 +102,17 @@ public class PartialStartupDetector {
         // and require the current syncToken to be at least that.
         final long now = System.currentTimeMillis();
         final long mySyncToken = readSyncToken(resourceResolver, mySlingId);
-        suppressingApplicable = (config != null && config.getSuppressPartiallyStartedInstances())
+        final boolean suppressionConfigured = config != null && config.getSuppressPartiallyStartedInstances();
+        suppressingApplicable = suppressionConfigured
                 && ((timeoutMillis <= 0) || (now < timeoutMillis))
                 && (mySyncToken != -1) && (lowestLocalSeqNum != -1)
                 && (mySyncToken >= lowestLocalSeqNum);
+        if (logger.isDebugEnabled()) {
+            logger.debug("<init> suppressionConfigured = " + suppressionConfigured + ", me = " + me + ", mySlingId = " + mySlingId +
+                    ", timeoutMillis = " + timeoutMillis + ", mySyncToken = " + mySyncToken +
+                    ", lowestLocalSeqNum = " + lowestLocalSeqNum + ", suppressingApplicable = " + suppressingApplicable);
+        }
+        this.logSilencer = logSilencer;
     }
 
     private boolean isSuppressing(int id) {
@@ -137,7 +150,7 @@ public class PartialStartupDetector {
             return false;
         }
         partiallyStartedClusterNodeIds.add(id);
-        logger.info(
+        logSilencer.infoOrDebug("suppressMissingIdMap-" + id,
                 "suppressMissingIdMap: ignoring partially started clusterNode without idMap entry (in "
                         + config.getIdMapPath() + ") : " + id);
         return true;
@@ -152,10 +165,10 @@ public class PartialStartupDetector {
             return false;
         }
         partiallyStartedClusterNodeIds.add(id);
-        logger.info(
+        logSilencer.infoOrDebug("suppressMissingSyncToken-"+slingId,
                 "suppressMissingSyncToken: ignoring partially started clusterNode without valid syncToken (in "
-                        + config.getSyncTokenPath() + ") : " + id
-                        + " (expected at least: " + currentSeqNum + ", is: " + syncToken + ")");
+                        + config.getSyncTokenPath() + "/" + slingId + ") : id=" + id
+                        + " (expected at least: currentSyncToken=" + currentSeqNum + ", is: syncToken=" + syncToken + ")");
         return true;
     }
 
@@ -164,13 +177,13 @@ public class PartialStartupDetector {
             return false;
         }
         partiallyStartedClusterNodeIds.add(id);
-        logger.info(
+        logSilencer.infoOrDebug("suppressMissingLeaderElectionId-"+id,
                 "suppressMissingLeaderElectionId: ignoring partially started clusterNode without leaderElectionId (in "
                         + config.getClusterInstancesPath() + ") : " + id);
         return true;
     }
 
-    Collection<?> getPartiallyStartedClusterNodeIds() {
+    Collection<Integer> getPartiallyStartedClusterNodeIds() {
         return partiallyStartedClusterNodeIds;
     }
 }
