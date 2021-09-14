@@ -77,10 +77,10 @@ public class PartialStartupDetector {
      * @param lowestLocalSeqNum the lowest sequence number which
      * the local OakClusterViewService has handled as part of asClusterView
      * @param me the clusterNodeId (provided by oak) of the local instance (==me)
-     * @param localSlingIds slingId previously seen by this cluster instance (those will not be suppressed)
+     * @param mySlingId the slingId of the local instance (==me)
      * @param timeoutMillis -1 or 0 disables the timeout, otherwise the suppression
      * is only done for the provided maximum number of milliseconds.
-     * @param logSilencer
+     * @param logSilencer the LogSilencer to use
      */
     PartialStartupDetector(ResourceResolver resourceResolver, Config config,
             long lowestLocalSeqNum, int me, String mySlingId, long currentSeqNum, long timeoutMillis,
@@ -103,6 +103,11 @@ public class PartialStartupDetector {
         final long now = System.currentTimeMillis();
         final long mySyncToken = readSyncToken(resourceResolver, mySlingId);
         final boolean suppressionConfigured = config != null && config.getSuppressPartiallyStartedInstances();
+        // timeoutMillis can have 0 or non-0 depending on the following cases:
+        // 1. if timeout is disabled by config it is always 0 - suppressing is applicable then
+        // 2. before the first suppressing or after a non-suppressing case it is also 0 - suppressing is applicable then
+        // 3. it is non-0 once suppressing starts but is within the timeout - then we keep suppressing
+        // 4. it is non-0 after the timeout - then suppressing stops
         suppressingApplicable = suppressionConfigured
                 && ((timeoutMillis <= 0) || (now < timeoutMillis))
                 && (mySyncToken != -1) && (lowestLocalSeqNum != -1)
@@ -115,7 +120,7 @@ public class PartialStartupDetector {
         this.logSilencer = logSilencer;
     }
 
-    private boolean isSuppressing(int id) {
+    private boolean isSuppressible(int id) {
         return suppressingApplicable && (id != me);
     }
 
@@ -146,7 +151,7 @@ public class PartialStartupDetector {
     }
 
     boolean suppressMissingIdMap(int id) {
-        if (!isSuppressing(id)) {
+        if (!isSuppressible(id)) {
             return false;
         }
         partiallyStartedClusterNodeIds.add(id);
@@ -157,7 +162,7 @@ public class PartialStartupDetector {
     }
 
     boolean suppressMissingSyncToken(int id, String slingId) {
-        if (!syncTokenEnabled || !isSuppressing(id)) {
+        if (!syncTokenEnabled || !isSuppressible(id)) {
             return false;
         }
         final long syncToken = readSyncToken(resourceResolver, slingId);
@@ -173,7 +178,7 @@ public class PartialStartupDetector {
     }
 
     boolean suppressMissingLeaderElectionId(int id) {
-        if (!isSuppressing(id)) {
+        if (!isSuppressible(id)) {
             return false;
         }
         partiallyStartedClusterNodeIds.add(id);
