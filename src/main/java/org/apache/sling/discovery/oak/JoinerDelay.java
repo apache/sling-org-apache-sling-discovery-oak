@@ -155,6 +155,9 @@ public class JoinerDelay implements ClusterSyncService {
         if (callback == null) {
             throw new IllegalArgumentException("callback must not be null");
         }
+        if (view == null) {
+            throw new IllegalArgumentException("view must not be null");
+        }
         // here we can be in any phase (IDLE, DELAYING, DONE)
         final boolean isPhaseDone;
         synchronized(this) {

@@ -161,32 +161,37 @@ public class JoinerDelayTest {
         try {
             joinerDelay.sync(null, null);
             fail("should fail");
-        } catch(Exception e) {
+        } catch(IllegalArgumentException e) {
             // ok
         }
         joinerDelay = new JoinerDelay(1, scheduler);
         try {
             joinerDelay.sync(view, null);
             fail("should fail");
-        } catch(Exception e) {
+        } catch(IllegalArgumentException e) {
             // ok
         }
         joinerDelay = new JoinerDelay(1, scheduler);
         // this one is fine as it is caught
-        joinerDelay.sync(null, callback);
+        try {
+            joinerDelay.sync(null, callback);
+            fail("should fail");
+        } catch(IllegalArgumentException e) {
+            // ok
+        }
 
         joinerDelay = new JoinerDelay(-1, scheduler);
         try {
             joinerDelay.sync(null, null);
             fail("should fail");
-        } catch(Exception e) {
+        } catch(IllegalArgumentException e) {
             // ok
         }
         joinerDelay = new JoinerDelay(-1, scheduler);
         try {
             joinerDelay.sync(view, null);
             fail("should fail");
-        } catch(Exception e) {
+        } catch(IllegalArgumentException e) {
             // ok
         }
         joinerDelay = new JoinerDelay(-1, scheduler);
