@@ -196,7 +196,12 @@ public class JoinerDelayTest {
         }
         joinerDelay = new JoinerDelay(-1, scheduler);
         // this one is fine as it is caught
-        joinerDelay.sync(null, callback);
+        try {
+            joinerDelay.sync(null, callback);
+            fail("should fail");
+        } catch(IllegalArgumentException e) {
+            // ok
+        }
     }
 
     @Test
