@@ -225,7 +225,7 @@ public class JoinerDelay implements ClusterSyncService {
     // might be called within or without synchronzied(this), so we do it ourselves
     private final void markDone() {
         synchronized(this) {
-            if (absoluteTimeout == null || phase == Phase.DONE) {
+            if (absoluteTimeout == null && phase == Phase.DONE) {
                 logger.warn("markDone : already marked done: absoluteTimeout = {}, phase = {}",
                         absoluteTimeout, phase);
             }
