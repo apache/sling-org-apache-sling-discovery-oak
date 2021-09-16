@@ -77,7 +77,7 @@ import org.slf4j.LoggerFactory;
  *      are in the new topology *while* the existing ones haven't received
  *      a TOPOLOGY_CHANGING event yet. And voila, we have a sort of short-lived split-brain.
  *      Now usually this should really only be very short-lived, as all that is holding
- *      bak is TopologyEventListeners reacting to TOPOLOGY_CHANGING - plus then some
+ *      back is TopologyEventListeners reacting to TOPOLOGY_CHANGING - plus then some
  *      repository writes. So all of that shouldn't take too long. But it could be a few
  *      seconds. And the aim of discovery is to provide guarantees that there are never
  *      different topologies in the , aehm .., topology.

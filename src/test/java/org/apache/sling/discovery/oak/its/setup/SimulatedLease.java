@@ -27,6 +27,7 @@ public class SimulatedLease {
     private final SimulatedLeaseCollection collection;
     private final ResourceResolverFactory factory;
     private final String slingId;
+    private int clusterNodeIdHint = -1;
 
     public SimulatedLease(ResourceResolverFactory factory,
             SimulatedLeaseCollection collection,
@@ -56,4 +57,19 @@ public class SimulatedLease {
         DescriptorHelper.setDiscoveryLiteDescriptor(factory, builder);
     }
 
+    public void deactivate() {
+        collection.deactivate(this);
+    }
+
+    public int getClusterNodeIdHint() {
+        return clusterNodeIdHint;
+    }
+
+    public void setClusterNodeIdHint(int clusterNodeIdHint) {
+        this.clusterNodeIdHint = clusterNodeIdHint;
+    }
+
+    public void incSeqNum() {
+        collection.incSeqNum();
+    }
 }

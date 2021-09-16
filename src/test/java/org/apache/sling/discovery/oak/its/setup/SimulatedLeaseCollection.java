@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.UUID;
 
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteDescriptorBuilder;
@@ -80,7 +81,7 @@ public class SimulatedLeaseCollection {
     }
 
     private DiscoveryLiteDescriptorBuilder doUpdateAndGet(SimulatedLease simulatedLease, OakTestConfig config, boolean updateLease) {
-        int clusterNodeId = getClusterNodeId(simulatedLease.getSlingId());
+        int clusterNodeId = getClusterNodeId(simulatedLease);
         if (updateLease) {
             leaseUpdates.put(simulatedLease.getSlingId(), System.currentTimeMillis());
         }
@@ -93,7 +94,7 @@ public class SimulatedLeaseCollection {
         List<Integer> actives = new LinkedList<Integer>();
         List<Integer> inactives = new LinkedList<Integer>();
         for (Map.Entry<String, Long> entry : leaseUpdates.entrySet()) {
-            int id = getClusterNodeId(entry.getKey());
+            int id = getClusterNodeId(entry.getKey(), -1);
             if (isTimedout(entry.getValue(), config)) {
                 inactives.add(id);
             } else {
@@ -109,8 +110,28 @@ public class SimulatedLeaseCollection {
         return System.currentTimeMillis() > lastHeartbeat + (1000 * config.getViewCheckerTimeout());
     }
 
-    private int getClusterNodeId(String slingId) {
+    private int getClusterNodeId(SimulatedLease lease) {
+        return getClusterNodeId(lease.getSlingId(), lease.getClusterNodeIdHint());
+    }
+
+    private int getClusterNodeId(String slingId, int idHint) {
         Integer id = clusterNodeIds.get(slingId);
+        if (id==null) {
+            if (idHint != -1) {
+                // try to respect the hint
+                boolean alreadyInUse = false;
+                for (Entry<String, Integer> e : clusterNodeIds.entrySet()) {
+                    if (e.getValue() == idHint) {
+                        alreadyInUse = true;
+                        break;
+                    }
+                }
+                if (!alreadyInUse) {
+                    id = idHint;
+                    clusterNodeIds.put(slingId, id);
+                }
+            }
+        }
         if (id==null) {
             id = ++highestId;
             clusterNodeIds.put(slingId, id);
@@ -124,6 +145,12 @@ public class SimulatedLeaseCollection {
 
     public void setFinal(boolean isFinal) {
         this.isFinal = isFinal;
+    }
+
+    public void deactivate(SimulatedLease simulatedLease) {
+        leaseUpdates.remove(simulatedLease.getSlingId());
+        clusterNodeIds.remove(simulatedLease.getSlingId());
+        incSeqNum();
     }
 
 }

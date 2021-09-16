@@ -259,7 +259,11 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
             throw new IllegalStateException("path must end with /: "+path);
         }
         VirtualInstance result = new VirtualInstance(this) {
-
+            @Override
+            public void stop() throws Exception {
+                super.stop();
+                getLease().deactivate();
+            }
         };
         return result;
     }
