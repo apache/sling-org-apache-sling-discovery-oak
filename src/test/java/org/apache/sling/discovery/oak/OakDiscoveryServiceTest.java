@@ -714,7 +714,7 @@ public class OakDiscoveryServiceTest {
                 .useRepositoryOf(builder1)
                 .setConnectorPingInterval(999999)
                 .setConnectorPingTimeout(999999);
-        builder2.getConfig().setJoinerDelaySeconds(5);
+        builder2.getConfig().setJoinerDelaySeconds(6);
         builder2.getConfig().setSyncTokenEnabled(true);
         builder2.getConfig().setMinEventDelay(1);
         builder2.getConfig().setSuppressPartiallyStartedInstance(true);
