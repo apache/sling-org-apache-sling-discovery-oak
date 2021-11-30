@@ -154,6 +154,8 @@ public class OakDiscoveryServiceTest {
                 .newRepository("/foo/barry/foo/", true)
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
+;
         VirtualInstance instance1 = builder1.build();
         OakVirtualInstanceBuilder builder2 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -161,6 +163,7 @@ public class OakDiscoveryServiceTest {
                 .useRepositoryOf(instance1)
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance2 = builder2.build();
         logger.info("testDescriptorSeqNumChange: created both instances, binding listener...");
 
@@ -215,6 +218,7 @@ public class OakDiscoveryServiceTest {
                 .newRepository("/foo/barrx/foo/", true)
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance1 = builder1.build();
         logger.info("testNotYetInitializedLeaderElectionid: created 1 instance, binding listener...");
 
@@ -375,6 +379,7 @@ public class OakDiscoveryServiceTest {
         builder1.getConfig().invertLeaderElectionPrefixOrder = true;
         builder1.getConfig().setSyncTokenEnabled(syncTokenEnabled);
         builder1.getConfig().setJoinerDelaySeconds(0);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance1 = builder1.build();
         OakVirtualInstanceBuilder builder2 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -386,6 +391,7 @@ public class OakDiscoveryServiceTest {
         builder2.getConfig().invertLeaderElectionPrefixOrder = true;
         builder2.getConfig().setSyncTokenEnabled(syncTokenEnabled);
         builder2.getConfig().setJoinerDelaySeconds(0);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance2 = builder2.build();
     
         DummyListener listener = new DummyListener();
@@ -412,6 +418,7 @@ public class OakDiscoveryServiceTest {
                 .newRepository("/foo/barrio/foo/", true)
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
+        builder.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance = builder.build();
         OakDiscoveryService discoveryService = (OakDiscoveryService) instance.getDiscoveryService();
         discoveryService.bindPropertyProvider(null, null);
@@ -449,6 +456,7 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999);
         builder1.getConfig().setSyncTokenEnabled(true);
         builder1.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance1 = builder1.build();
         DummyListener listener1 = new DummyListener();
         OakDiscoveryService discoveryService1 = (OakDiscoveryService) instance1.getDiscoveryService();
@@ -467,6 +475,7 @@ public class OakDiscoveryServiceTest {
                 .useRepositoryOf(instance1)
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         builder2.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
 
         // while we started instance 2, we don't let it heartbeat yet - just a lease update
@@ -504,6 +513,7 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingInterval(999)
                 .setConnectorPingTimeout(999);
         builder3.getConfig().setJoinerDelaySeconds(joinerDelaySeconds);
+        builder3.getConfig().setSuppressPartiallyStartedInstance(true);
         builder3.updateLease();
 
         instance1.heartbeatsAndCheckView();
@@ -550,6 +560,7 @@ public class OakDiscoveryServiceTest {
         builder1.getConfig().setMinEventDelay(1);
         builder1.getConfig().setJoinerDelaySeconds(5);
         builder1.getConfig().setSyncTokenEnabled(true);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
         // 1. start instance 1 normally -> call builder1.build()
         VirtualInstance instance1 = builder1.build();
         DummyListener listener1 = new DummyListener();
@@ -579,6 +590,8 @@ public class OakDiscoveryServiceTest {
         builder1.getConfig().setMinEventDelay(1);
         builder1.getConfig().setJoinerDelaySeconds(5);
         builder1.getConfig().setSyncTokenEnabled(true);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
+
         // 1. start instance 1 normally -> call builder1.build()
         VirtualInstance instance1 = builder1.build();
         DummyListener listener1 = new DummyListener();
@@ -600,6 +613,7 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999999);
         builder2.getConfig().setJoinerDelaySeconds(5);
         builder2.getConfig().setSyncTokenEnabled(true);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         // 2. start instance 2 only partially -> do not call builder2.build() but just updateLease()
         builder2.updateLease();
 
@@ -613,6 +627,7 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999999);
         builder3.getConfig().setJoinerDelaySeconds(5);
         builder3.getConfig().setSyncTokenEnabled(true);
+        builder3.getConfig().setSuppressPartiallyStartedInstance(true);
         // 3. start instance 3 + 4 fully -> builder3.build()
         VirtualInstance instance3 = builder3.build();
         DummyListener listener3 = new DummyListener();
@@ -627,6 +642,7 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999999);
         builder4.getConfig().setJoinerDelaySeconds(5);
         builder4.getConfig().setSyncTokenEnabled(true);
+        builder4.getConfig().setSuppressPartiallyStartedInstance(true);
         // 3. start instance 3 + 4 fully -> builder4.build()
         VirtualInstance instance4 = builder4.build();
         DummyListener listener4 = new DummyListener();
@@ -678,6 +694,7 @@ public class OakDiscoveryServiceTest {
         builder1.getConfig().setMinEventDelay(1);
         builder1.getConfig().setJoinerDelaySeconds(5);
         builder1.getConfig().setSyncTokenEnabled(true);
+        builder1.getConfig().setSuppressPartiallyStartedInstance(true);
         // 1. start instance 1 normally -> call builder1.build()
         VirtualInstance instance1 = builder1.build();
         DummyListener listener1 = new DummyListener();
@@ -699,7 +716,8 @@ public class OakDiscoveryServiceTest {
                 .setConnectorPingTimeout(999999);
         builder2.getConfig().setJoinerDelaySeconds(5);
         builder2.getConfig().setSyncTokenEnabled(true);
-        builder1.getConfig().setMinEventDelay(1);
+        builder2.getConfig().setMinEventDelay(1);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         // 2. start instance 2 only partially -> do not call builder2.build() but just updateLease()
         builder2.updateLease();
 
@@ -733,6 +751,7 @@ public class OakDiscoveryServiceTest {
         builder3.getConfig().setMinEventDelay(1);
         builder3.getConfig().setJoinerDelaySeconds(5);
         builder3.getConfig().setSyncTokenEnabled(true);
+        builder3.getConfig().setSuppressPartiallyStartedInstance(true);
         VirtualInstance instance3 = builder3.build();
         DummyListener listener3 = new DummyListener();
         OakDiscoveryService discoveryService3 = (OakDiscoveryService) instance3.getDiscoveryService();
@@ -778,8 +797,12 @@ public class OakDiscoveryServiceTest {
         assertEquals(1, listener3.countEvents());
     }
 
+    /**
+     * This test requires the minEventHandlerDelay to be configured properly, ie reasonably
+     * high to delay the time between TOPOLOGY_CHANGING and TOPOLOGY_CHANGED
+     * (as a replacement of previously not suppressing mismatching synctokens)
+     */
     @Test
-    @Ignore(value = "currently fails")
     public void reuseClusterIdTest() throws Exception {
         logger.info("reuseClusterIdTest : START - creating instance1.");
         OakVirtualInstanceBuilder builder1 = createInstanceWithNewRepo("instance", "/foo1/barrio/foo1/", 1, 5);
@@ -878,7 +901,7 @@ public class OakDiscoveryServiceTest {
     public void testTopologyChangeWithOneSlowMember() throws Exception {
         logger.info("testTopologyChangeWithOneSlowMember : START - creating instance1.");
         OakVirtualInstanceBuilder builder1 = createInstanceWithNewRepo("instance1",
-                "/foo1/barrio/foo1/", 1, 1);
+                "/foo1/barrio/foo1/", 5, 1);
         // 1. start instance 1 normally -> call builder1.build()
         VirtualInstance instance1 = builder1.build();
         DummyListener listener1 = createDummyListener(instance1);
@@ -892,7 +915,7 @@ public class OakDiscoveryServiceTest {
         DummyListener listener2 = createDummyListener(instance2);
 
         // a bunch of heartbeats
-        for(int i=0; i<4; i++) {
+        for(int i=0; i<7; i++) {
             instance1.heartbeatsAndCheckView();
             instance2.heartbeatsAndCheckView();
             Thread.sleep(1000);
@@ -932,6 +955,7 @@ public class OakDiscoveryServiceTest {
         builder2.getConfig().setMinEventDelay(minEventDelay);
         builder2.getConfig().setJoinerDelaySeconds(joinerDelay);
         builder2.getConfig().setSyncTokenEnabled(true);
+        builder2.getConfig().setSuppressPartiallyStartedInstance(true);
         return builder2;
     }
 
@@ -948,8 +972,10 @@ public class OakDiscoveryServiceTest {
                 .setDebugName(debugName).newRepository(discoveryPath, true)
                 .setConnectorPingInterval(999999).setConnectorPingTimeout(999999);
         builder.getConfig().setMinEventDelay(minEventDelay);
+        builder.setMinEventDelay(minEventDelay);
         builder.getConfig().setJoinerDelaySeconds(joinerDelay);
         builder.getConfig().setSyncTokenEnabled(true);
+        builder.getConfig().setSuppressPartiallyStartedInstance(true);
         return builder;
     }
 }

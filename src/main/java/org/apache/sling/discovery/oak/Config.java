@@ -189,7 +189,7 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     private static final String INVERT_LEADER_ELECTION_PREFIX_ORDER = "invertLeaderElectionPrefixOrder";
     protected boolean invertLeaderElectionPrefixOrder = DEFAULT_INVERT_LEADER_ELECTION_PREFIX_ORDER;
     
-    private static final boolean DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES = true;
+    private static final boolean DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES = false;
     @Property(boolValue=DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES)
     private static final String SUPPRESS_PARTIALLY_STARTED_INSTANCES = "suppressPartiallyStartedInstance";
     protected boolean suppressPartiallyStartedInstance = DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES;
@@ -199,7 +199,7 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     private static final String SUPPRESSION_TIMEOUT_SECONDS = "suppressionTimeoutSeconds";
     protected long suppressionTimeoutSeconds = DEFAULT_SUPPRESSION_TIMEOUT_SECONDS;
 
-    private static final long DEFAULT_JOINER_DELAY_SECONDS = 30;
+    private static final long DEFAULT_JOINER_DELAY_SECONDS = 0;
     @Property(longValue=DEFAULT_JOINER_DELAY_SECONDS)
     private static final String JOINER_DELAY_SECONDS = "joinerDelaySeconds";
     protected long joinerDelaySeconds = DEFAULT_JOINER_DELAY_SECONDS;

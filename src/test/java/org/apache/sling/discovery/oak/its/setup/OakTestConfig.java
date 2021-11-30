@@ -96,4 +96,8 @@ public class OakTestConfig extends Config implements ModifiableTestBaseConfig {
     public void setJoinerDelaySeconds(long joinerDelaySeconds) {
         this.joinerDelaySeconds = joinerDelaySeconds;
     }
+
+    public void setSuppressPartiallyStartedInstance(boolean suppressPartiallyStartedInstance) {
+        this.suppressPartiallyStartedInstance = suppressPartiallyStartedInstance;
+    }
 }
