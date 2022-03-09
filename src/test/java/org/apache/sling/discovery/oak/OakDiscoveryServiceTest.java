@@ -23,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -447,6 +448,27 @@ public class OakDiscoveryServiceTest {
         doSimpleNewJoinerTest(2);
     }
 
+    private boolean waitForEquals(DummyListener listener, int expected, long maxWait) {
+        final long timeout = System.currentTimeMillis() + maxWait;
+        while(System.currentTimeMillis() < timeout) {
+            if (listener.countEvents() == expected) {
+                return true;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                // this empty catch is okay
+            }
+        }
+        final int actual = listener.countEvents();
+        if (actual == expected) {
+            return true;
+        }
+        fail("listener did not get expected number of events, expected: " + expected + ", got : " + actual);
+        // never reached:
+        return false;
+    }
+
     private void doSimpleNewJoinerTest(int joinerDelaySeconds) throws Exception {
         OakVirtualInstanceBuilder builder1 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -503,8 +525,8 @@ public class OakDiscoveryServiceTest {
 
         Thread.sleep((joinerDelaySeconds + 2) * 1000);
 
-        assertEquals(3, listener1.countEvents());
-        assertEquals(1, listener2.countEvents());
+        waitForEquals(listener1, 3, 1000);
+        waitForEquals(listener2, 1, 2000); // had a flaky failure so giving it 2 sec
 
         OakVirtualInstanceBuilder builder3 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
@@ -792,9 +814,9 @@ public class OakDiscoveryServiceTest {
         instance3.heartbeatsAndCheckView();
 
         // check all the listeners
-        assertEquals(5, listener1.countEvents());
-        assertEquals(1, listener2.countEvents());
-        assertEquals(1, listener3.countEvents());
+        waitForEquals(listener1, 5, 1000);
+        waitForEquals(listener2, 1, 1000);
+        waitForEquals(listener3, 1, 1000);
     }
 
     /**
@@ -893,8 +915,8 @@ public class OakDiscoveryServiceTest {
             instance1.heartbeatsAndCheckView();
             instance2b.heartbeatsAndCheckView();
         }
-        assertEquals(1, listener2b.countEvents());
-        assertEquals(7, listener1.countEvents());
+        waitForEquals(listener2b, 1, 1000);
+        waitForEquals(listener1, 7, 2000); // had a flaky failure so giving it 2 sec
     }
 
     @Test
