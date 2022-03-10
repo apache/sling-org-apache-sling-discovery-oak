@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The JoinerDelay is an ClusterSyncService used in the sync chain and got
  * introduced as part of SLING-10489.
- * <p/>
+ * <p>
  * With SLING-10489 new-joining instances are ignored/suppressed by existing
  * instances in the cluster as long as they are potentially only partially
  * started up. The definition of partial-vs-full is the when everything
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * It is undefined how long a startup lasts and to avoid blocking other instances
  * from operating under a well-defined topology, the notion of ignoring/suppressing
  * partially started instances has been introduced.
- * <p/>
+ * <p>
  * Generally speaking there are the following different cases wrt changes
  * in the local cluster:
  * <ul>

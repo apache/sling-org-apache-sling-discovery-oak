@@ -33,12 +33,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Discovery.oak requires that both Oak and Sling are operating normally in
  * order to declare victory and announce a new topology.
- * <p/>
+ * <p>
  * The startup phase is especially tricky in this regard, since there are
  * multiple elements that need to get updated (some are in the Oak layer, some
  * in Sling):
  * <ul>
- * <li>lease & clusterNodeId : this is maintained by Oak</li>
+ * <li>lease &amp; clusterNodeId : this is maintained by Oak</li>
  * <li>idMap : this is maintained by IdMapService</li>
  * <li>leaderElectionId : this is maintained by OakViewChecker</li>
  * <li>syncToken : this is maintained by SyncTokenService</li>
@@ -46,11 +46,11 @@ import org.slf4j.LoggerFactory;
  * A successful join of a cluster instance to the topology requires all 4
  * elements to be set (and maintained, in case of lease and syncToken)
  * correctly.
- * <p/>
+ * <p>
  * This PartialStartupDetector is in charge of ensuring that a newly joined
  * instance has all these elements set. Otherwise it is considered a "partially
  * started instance" (PSI) and suppressed.
- * <p/>
+ * <p>
  * The suppression ensures that existing instances aren't blocked by a rogue,
  * partially starting instance. However, there's also a timeout after which the
  * suppression is no longer applied - at which point such a rogue instance will
