@@ -565,9 +565,9 @@ public class OakDiscoveryServiceTest {
 
         Thread.sleep(joinerDelaySeconds * 1000);
 
-        assertEquals(1, listener3.countEvents());
-        assertEquals(5, listener1.countEvents());
-        assertEquals(3, listener2.countEvents());
+        waitForEquals(listener3, 1, 1000);
+        waitForEquals(listener1, 5, 1000);
+        waitForEquals(listener2, 3, 1000);
     }
 
     @Test
