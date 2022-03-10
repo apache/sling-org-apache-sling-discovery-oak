@@ -56,6 +56,7 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
     private SimulatedLeaseCollection leaseCollection;
     private OakBacklogClusterSyncService consistencyService;
     private SyncTokenService syncTokenService;
+    private SimulatedLease leasy;
 
     public SimulatedLeaseCollection getSimulatedLeaseCollection() {
         return leaseCollection;
@@ -130,14 +131,19 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
         return c;
     }
 
+    public SimulatedLease getLease() {
+        if (leasy == null) {
+            leasy = new SimulatedLease(getResourceResolverFactory(), leaseCollection, getSlingId());
+        }
+        return leasy;
+    }
+
     @Override
     protected ViewChecker createViewChecker() throws Exception {
         getOakViewChecker();
         return new ViewChecker() {
 
             private final Logger logger = LoggerFactory.getLogger(getClass());
-
-            private SimulatedLease lease = new SimulatedLease(getResourceResolverFactory(), leaseCollection, getSlingId());
 
             protected void activate(ComponentContext c) throws Throwable {
                 OakViewChecker pinger = getOakViewChecker();
@@ -147,7 +153,7 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
             @Override
             public void checkView() {
                 try {
-                    lease.updateDescriptor(getConfig());
+                    getLease().updateDescriptor(getConfig());
                 } catch (Exception e) {
                     logger.error("run: could not update lease: "+e);
                 }
@@ -164,7 +170,7 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
 //                one heartbeat means i'm visible for others
 //                as soon as I see others the descriptor is updated
                 try {
-                    lease.updateLeaseAndDescriptor(getConfig());
+                    getLease().updateLeaseAndDescriptor(getConfig());
                 } catch (Exception e) {
                     logger.error("run: could not update lease: "+e, e);
                 }
@@ -253,7 +259,11 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
             throw new IllegalStateException("path must end with /: "+path);
         }
         VirtualInstance result = new VirtualInstance(this) {
-
+            @Override
+            public void stop() throws Exception {
+                super.stop();
+                getLease().deactivate();
+            }
         };
         return result;
     }
@@ -273,5 +283,9 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
             l.refresh(false);
             l.logout();
         }
+    }
+
+    public void updateLease() throws Exception {
+        getLease().updateLeaseAndDescriptor(getConfig());
     }
 }
