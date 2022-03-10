@@ -193,6 +193,7 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     @Property(boolValue=DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES)
     private static final String SUPPRESS_PARTIALLY_STARTED_INSTANCES = "suppressPartiallyStartedInstance";
     protected boolean suppressPartiallyStartedInstance = DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES;
+    private static final String JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.joinerdelay.enabled";
 
     private static final long DEFAULT_SUPPRESSION_TIMEOUT_SECONDS = -1;
     @Property(longValue=DEFAULT_SUPPRESSION_TIMEOUT_SECONDS)
@@ -243,7 +244,13 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
      * a syncToken should also be used
      */
     private boolean syncTokenEnabled;
-    
+
+    /** only check system property JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME every minute, here's to the next check */
+    private long joinerDelayOverwriteNextCheck;
+
+    /** cache of last read of system property JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME **/
+    private boolean joinerDelayOverwrite;
+
     @Activate
     protected void activate(final Map<String, Object> properties) {
 		logger.debug("activate: config activated.");
@@ -569,8 +576,41 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
         return leaderElectionPrefix;
     }
 
+    /**
+     * Checks if the system property JOIN_DELAY_SYSTEM_PROPERTY_NAME is set
+     * and uses that value. Otherwise uses the provided default.
+     * @param configValue the provided default to be used unless the system property is set
+     * @return the overwritten value to be used as the actual config value
+     */
+    private boolean applyJoinerDelayOverwrite(final boolean configValue) {
+        final long now = System.currentTimeMillis();
+        if (joinerDelayOverwriteNextCheck != 0 && now < joinerDelayOverwriteNextCheck) {
+            // avoid reading system property too often, only do every 5 minutes.
+            return joinerDelayOverwrite;
+        }
+        final String systemPropertyValue = System.getProperty(JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME);
+        final boolean newJoinerDelayOverwrite =
+                PropertiesUtil.toBoolean(systemPropertyValue, configValue);
+        if (joinerDelayOverwriteNextCheck == 0) {
+            logger.info("applyJoinerDelayOverwrite : initialization."
+                    + " system property '" + JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME + "' = " + systemPropertyValue
+                    + ", config value = " + configValue
+                    + ", resulting value = " + newJoinerDelayOverwrite);
+        } else if (newJoinerDelayOverwrite != joinerDelayOverwrite) {
+            logger.info("applyJoinerDelayOverwrite : value change."
+                    + " system property '" + JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME + "' = " + systemPropertyValue
+                    + ", config value = " + configValue
+                    + ", resulting value = " + newJoinerDelayOverwrite);
+        }
+        joinerDelayOverwrite = newJoinerDelayOverwrite;
+        joinerDelayOverwriteNextCheck = now + 300000; //re-check every 300sec, should be fast and slow enough
+        return joinerDelayOverwrite;
+    }
+
     public boolean getSuppressPartiallyStartedInstances() {
-        return suppressPartiallyStartedInstance;
+        // allow configured suppressPartiallyStartedInstance
+        // to be overwritten by a system property (JOIN_DELAY_ENABLED_SYSTEM_PROPERTY_NAME)
+        return applyJoinerDelayOverwrite(suppressPartiallyStartedInstance);
     }
 
     public long getSuppressionTimeoutSeconds() {
