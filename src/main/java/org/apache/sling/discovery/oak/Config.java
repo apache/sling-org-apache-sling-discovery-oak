@@ -245,7 +245,7 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
      */
     private boolean syncTokenEnabled;
 
-    /** only check system property JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME every minute, here's to the next check */
+    /** only check system property JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME every 5 minutes, here's to the next check */
     private long joinerDelayOverwriteNextCheck;
 
     /** cache of last read of system property JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME **/
