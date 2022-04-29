@@ -29,10 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
 import org.apache.sling.api.resource.PersistenceException;
@@ -52,14 +48,16 @@ import org.apache.sling.discovery.commons.providers.util.LogSilencer;
 import org.apache.sling.discovery.commons.providers.util.ResourceHelper;
 import org.apache.sling.discovery.oak.Config;
 import org.apache.sling.settings.SlingSettingsService;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Oak-based implementation of the ClusterViewService interface.
  */
-@Component
-@Service(value = ClusterViewService.class)
+@Component (service = ClusterViewService.class)
 public class OakClusterViewService implements ClusterViewService {
     
     private static final String PROPERTY_CLUSTER_ID = "clusterId";
@@ -183,7 +181,7 @@ public class OakClusterViewService implements ClusterViewService {
         }
         // convert int[] to List<Integer>
         //TODO: could use Guava's Ints class here..
-        List<Integer> activeIdsList = new LinkedList<Integer>();
+        List<Integer> activeIdsList = new LinkedList<>();
         for (Integer integer : activeIds) {
             activeIdsList.add(integer);
         }
@@ -201,8 +199,7 @@ public class OakClusterViewService implements ClusterViewService {
                 if (partialStartupDetector.suppressMissingIdMap(id)) {
                     continue;
                 } else {
-                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
-                            "no slingId mapped for clusterNodeId="+id);
+                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW, "no slingId mapped for clusterNodeId="+id);
                 }
             }
             if (partialStartupDetector.suppressMissingSyncToken(id, slingId)) {
@@ -224,8 +221,7 @@ public class OakClusterViewService implements ClusterViewService {
                     // so falling back to treating this as NO_ESTABLISHED_VIEW
                     // and with the heartbeat interval this situation will
                     // resolve itself upon one of the next pings
-                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW,
-                            "no leaderElectionId available yet for slingId="+slingId);
+                    throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW, "no leaderElectionId available yet for slingId="+slingId);
                 }
             }
             leaderElectionIds.put(id, leaderElectionId);
@@ -442,10 +438,8 @@ public class OakClusterViewService implements ClusterViewService {
     }
 
     private Map<String, String> readProperties(String slingId, ResourceResolver resourceResolver) {
-        Resource res = resourceResolver.getResource(
-                        config.getClusterInstancesPath() + "/"
-                                + slingId);
-        final Map<String, String> props = new HashMap<String, String>();
+        Resource res = resourceResolver.getResource(config.getClusterInstancesPath() + "/" + slingId);
+        final Map<String, String> props = new HashMap<>();
         if (res != null) {
             final Resource propertiesChild = res.getChild("properties");
             if (propertiesChild != null) {
