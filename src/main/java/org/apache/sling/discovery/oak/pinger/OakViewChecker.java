@@ -39,6 +39,9 @@ import org.apache.sling.discovery.oak.OakDiscoveryService;
 import org.apache.sling.settings.SlingSettingsService;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.http.HttpService;
 
 /**
  * The OakViewChecker is taking care of checking the oak discovery-lite
@@ -50,7 +53,13 @@ import org.osgi.service.component.annotations.Reference;
  * Remote heartbeats are POSTs to remote TopologyConnectorServlets using
  * discovery.base
  */
-@Component( service = OakViewChecker.class)
+@Component(service = OakViewChecker.class,
+        reference = {
+                @Reference(name = "HttpService",
+                        service = HttpService.class,
+                        cardinality = ReferenceCardinality.MULTIPLE,
+                        policy = ReferencePolicy.DYNAMIC)
+        })
 public class OakViewChecker extends BaseViewChecker {
 
     @Reference

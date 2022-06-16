@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.apache.sling</groupId>
         <artifactId>sling-bundle-parent</artifactId>
-        <version>47</version>
+        <version>48</version>
         <relativePath />
     </parent>
 
@@ -36,7 +36,7 @@
     <properties>
         <project.build.outputTimestamp>1</project.build.outputTimestamp>
         <sling.java.version>8</sling.java.version>
-        <jackrabbit.version>2.16.9</jackrabbit.version>
+        <jackrabbit.version>2.14.3</jackrabbit.version>
         <oak.version>1.4.4</oak.version>
         <!-- by default Slow tests are excluded - use -PincludeSlowTests to include them -->
         <sling.excluded.surefire.groups>org.apache.sling.commons.testing.junit.categories.Slow</sling.excluded.surefire.groups>
@@ -83,10 +83,6 @@
                     <argLine>${jacoco.command} -Xmx2048m</argLine>
                     <excludedGroups>${sling.excluded.surefire.groups}</excludedGroups>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>biz.aQute.bnd</groupId>
-                <artifactId>bnd-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -179,7 +175,7 @@
 		<dependency>
 			<groupId>javax.jcr</groupId>
 			<artifactId>jcr</artifactId>
-			<version>2.0</version>
+
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -264,8 +260,7 @@
 	    </dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
-            <version>2.4</version>
+			<artifactId>javax.servlet-api</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
@@ -285,6 +280,7 @@
             <version>3.3</version>
             <scope>provided</scope>
         </dependency>
+
       <!-- Testing -->
         <dependency>
             <groupId>junit</groupId>
