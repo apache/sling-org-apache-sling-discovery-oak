@@ -54,7 +54,6 @@ import org.apache.sling.discovery.oak.its.setup.OakTestConfig;
 import org.apache.sling.discovery.oak.its.setup.OakVirtualInstanceBuilder;
 import org.apache.sling.discovery.oak.its.setup.SimulatedLease;
 import org.apache.sling.discovery.oak.its.setup.SimulatedLeaseCollection;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.osgi.framework.Constants;
 import org.slf4j.Logger;

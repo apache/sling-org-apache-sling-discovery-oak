@@ -29,11 +29,28 @@ import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
-import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_BACKOFF_STABLE_FACTOR;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_BACKOFF_STANDBY_FACTOR;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_CLUSTER_SYNC_SERVICE_INTERVAL;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_CLUSTER_SYNC_SERVICE_TIMEOUT;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_DISCOVERY_LITE_CHECK_INTERVAL;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_DISCOVERY_RESOURCE_PATH;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_INVERT_LEADER_ELECTION_PREFIX_ORDER;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_JOINER_DELAY_SECONDS;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_LEADER_ELECTION_PREFIX;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_MIN_EVENT_DELAY;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_SOCKET_CONNECT_TIMEOUT;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_SO_TIMEOUT;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_SUPPRESSION_TIMEOUT_SECONDS;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_TOPOLOGY_CONNECTOR_INTERVAL;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_TOPOLOGY_CONNECTOR_WHITELIST;
+import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME;
 
 /**
  * Configuration object used as a central config point for the discovery service
@@ -42,7 +59,7 @@ import org.slf4j.LoggerFactory;
  * The properties are described below under.
  */
 @Component(service = {Config.class, BaseConfig.class, DiscoveryLiteConfig.class})
-@Designate(ocd = Config.Configuration.class)
+@Designate(ocd = DiscoveryServiceCentralConfig.class)
 public class Config implements BaseConfig, DiscoveryLiteConfig {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -62,29 +79,6 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
      **/
     private static final String ID_MAP_RESOURCE = "idMap";
 
-    public static final long DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT = 120;
-    public static final long DEFAULT_TOPOLOGY_CONNECTOR_INTERVAL = 30;
-    public static final long DEFAULT_DISCOVERY_LITE_CHECK_INTERVAL = 2;
-    public static final long DEFAULT_CLUSTER_SYNC_SERVICE_TIMEOUT = 120;
-    public static final long DEFAULT_CLUSTER_SYNC_SERVICE_INTERVAL = 2;
-    public static final int DEFAULT_MIN_EVENT_DELAY = 3;
-    public static final int DEFAULT_SOCKET_CONNECT_TIMEOUT = 10;
-    public static final int DEFAULT_SO_TIMEOUT = 10;
-    private static final String[] DEFAULT_TOPOLOGY_CONNECTOR_WHITELIST = {"localhost", "127.0.0.1"};
-    private static final String DEFAULT_DISCOVERY_RESOURCE_PATH = "/var/discovery/oak/";
-    private static final int DEFAULT_BACKOFF_STANDBY_FACTOR = 5;
-    private static final int DEFAULT_BACKOFF_STABLE_FACTOR = 5;
-    private static final long DEFAULT_LEADER_ELECTION_PREFIX = 1;
-    private static final boolean DEFAULT_INVERT_LEADER_ELECTION_PREFIX_ORDER = false;
-    private static final boolean DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES = false;
-    private static final String JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.joinerdelay.enabled";
-    private static final long DEFAULT_SUPPRESSION_TIMEOUT_SECONDS = -1;
-    private static final long DEFAULT_JOINER_DELAY_SECONDS = 0;
-
-    /**
-     * The default lifetime of a HMAC shared key in ms. (4h)
-     */
-    private static final long DEFAULT_SHARED_KEY_INTERVAL = 3600 * 1000 * 4;
     /**
      * True when auto-stop of a local-loop is enabled. Default is false.
      **/
@@ -159,141 +153,13 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     protected long suppressionTimeoutSeconds = DEFAULT_SUPPRESSION_TIMEOUT_SECONDS;
     protected long joinerDelaySeconds = DEFAULT_JOINER_DELAY_SECONDS;
 
-    @ObjectClassDefinition(name = "%config.name", description = "%config.description")
-    public @interface Configuration {
-
-        /**
-         * Configure the timeout (in seconds) after which an instance is considered dead/crashed.
-         */
-        @AttributeDefinition
-        long connectorPingTimeout() default DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT;
-
-        /**
-         * Configure the interval (in seconds) according to which the heartbeats are exchanged in the topology.
-         */
-        @AttributeDefinition
-        long connectorPingInterval() default DEFAULT_TOPOLOGY_CONNECTOR_INTERVAL;
-
-        @AttributeDefinition
-        long discoveryLiteCheckInterval() default DEFAULT_DISCOVERY_LITE_CHECK_INTERVAL;
-
-        @AttributeDefinition
-        long clusterSyncServiceTimeout() default DEFAULT_CLUSTER_SYNC_SERVICE_TIMEOUT;
-
-        @AttributeDefinition
-        long clusterSyncServiceInterval() default DEFAULT_CLUSTER_SYNC_SERVICE_INTERVAL;
-
-        /**
-         * If set to true a syncToken will be used on top of waiting for deactivating instances to be fully processed.
-         * If set to false, only deactivating instances will be waited for to be fully processed.
-         */
-        @AttributeDefinition
-        boolean enableSyncToken() default true;
-
-        /**
-         * Configure the time (in seconds) which must be passed at minimum between sending TOPOLOGY_CHANGING/_CHANGED (avoid flooding).
-         */
-        @AttributeDefinition
-        int minEventDelay() default DEFAULT_MIN_EVENT_DELAY;
-
-        /**
-         * Configure the socket connect timeout for topology connectors.
-         */
-        @AttributeDefinition
-        int socketConnectTimeout() default DEFAULT_SOCKET_CONNECT_TIMEOUT;
-
-        /**
-         * Configure the socket read timeout (SO_TIMEOUT) for topology connectors.
-         */
-        @AttributeDefinition
-        int soTimeout() default DEFAULT_SO_TIMEOUT;
-
-        /**
-         * URLs where to join a topology, eg http://localhost:4502/libs/sling/topology/connector
-         */
-        @AttributeDefinition (cardinality = 1024)
-        String[] topologyConnectorUrls() default {};
-
-        /**
-         * list of ips and/or hostnames which are allowed to connect to /libs/sling/topology/connector
-         */
-        @AttributeDefinition (cardinality = 1024)
-        String[] topologyConnectorWhitelist() default {"localhost", "127.0.0.1"};
-
-        /**
-         * Path of resource where to keep discovery information, e.g /var/discovery/oak/
-         */
-        @AttributeDefinition
-        String discoveryResourcePath() default DEFAULT_DISCOVERY_RESOURCE_PATH;
-
-        /**
-         * If set to true, local-loops of topology connectors are automatically stopped when detected so.
-         */
-        @AttributeDefinition
-        boolean autoStopLocalLoopEnabled() default false;
-
-        /**
-         * If set to true, request body will be gzipped - only works if counter-part accepts gzip-requests!
-         */
-        @AttributeDefinition
-        boolean gzipConnectorRequestsEnabled() default false;
-
-        /**
-         * If set to true, hmac is enabled and the white list is disabled.
-         */
-        @AttributeDefinition
-        boolean hmacEnabled() default false;
-
-        /**
-         * If set to true, and the whitelist is disabled, messages will be encrypted.
-         */
-        @AttributeDefinition
-        boolean enableEncryption() default false;
-
-        /**
-         * The value fo the shared key, shared amongst all instances in the same cluster.
-         */
-        @AttributeDefinition
-        String sharedKey() default "";
-
-        @AttributeDefinition
-        long hmacSharedKeyTTL() default DEFAULT_SHARED_KEY_INTERVAL;
-
-        /**
-         * The property for defining the backoff factor for standby (loop) connectors
-         */
-        @AttributeDefinition
-        int backoffStandbyFactor() default DEFAULT_BACKOFF_STANDBY_FACTOR;
-
-        /**
-         * The property for defining the maximum backoff factor for stable connectors
-         */
-        @AttributeDefinition
-        int backoffStableFactor() default DEFAULT_BACKOFF_STABLE_FACTOR;
-
-        @AttributeDefinition
-        long leaderElectionPrefix() default DEFAULT_LEADER_ELECTION_PREFIX;
-
-        @AttributeDefinition
-        boolean invertLeaderElectionPrefixOrder() default DEFAULT_INVERT_LEADER_ELECTION_PREFIX_ORDER;
-
-        @AttributeDefinition
-        boolean suppressPartiallyStartedInstance() default DEFAULT_SUPPRESS_PARTIALLY_STARTED_INSTANCES;
-
-        @AttributeDefinition
-        long suppressionTimeoutSeconds() default DEFAULT_SUPPRESSION_TIMEOUT_SECONDS;
-
-        @AttributeDefinition
-        long joinerDelaySeconds() default DEFAULT_JOINER_DELAY_SECONDS;
-    }
-
     @Activate
-    protected void activate(BundleContext context, Configuration config) {
+    protected void activate(BundleContext context, DiscoveryServiceCentralConfig config) {
         logger.debug("activate: config activated.");
         configure(config);
     }
 
-    protected void configure(final Configuration config) {
+    protected void configure(final DiscoveryServiceCentralConfig config) {
         this.connectorPingTimeout = config.connectorPingTimeout();
         logger.debug("configure: connectorPingTimeout='{}'", this.connectorPingTimeout);
 
