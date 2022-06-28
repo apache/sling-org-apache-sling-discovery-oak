@@ -23,6 +23,8 @@ import org.apache.sling.discovery.oak.Config;
 
 public class OakTestConfig extends Config implements ModifiableTestBaseConfig {
 
+    Boolean syncTokenEnabledOverwrite = null;
+
     public OakTestConfig() {
         // empty
     }
@@ -76,5 +78,26 @@ public class OakTestConfig extends Config implements ModifiableTestBaseConfig {
     
     public long getViewCheckerTimeout() {
         return connectorPingTimeout;
+    }
+
+    @Override
+    public boolean getSyncTokenEnabled() {
+        if (syncTokenEnabledOverwrite == null) {
+            return super.getSyncTokenEnabled();
+        } else {
+            return syncTokenEnabledOverwrite;
+        }
+    }
+
+    public void setSyncTokenEnabled(boolean enabled) {
+        syncTokenEnabledOverwrite = enabled;
+    }
+
+    public void setJoinerDelaySeconds(long joinerDelaySeconds) {
+        this.joinerDelaySeconds = joinerDelaySeconds;
+    }
+
+    public void setSuppressPartiallyStartedInstance(boolean suppressPartiallyStartedInstance) {
+        this.suppressPartiallyStartedInstance = suppressPartiallyStartedInstance;
     }
 }
