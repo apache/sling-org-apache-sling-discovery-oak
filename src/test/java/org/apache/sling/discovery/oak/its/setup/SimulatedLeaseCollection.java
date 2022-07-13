@@ -70,6 +70,15 @@ public class SimulatedLeaseCollection {
 
     public synchronized void hooked(SimulatedLease lease) {
         leases.add(lease);
+//        if (leases.size() > 1) {
+//            incSeqNum();
+//        }
+    }
+
+    public synchronized void unhooked(SimulatedLease lease) {
+        if (!leases.remove(lease)) {
+            throw new IllegalStateException("could not unhook lease : " + lease.getClusterNodeIdHint() + "/" + lease.getSlingId());
+        }
     }
 
     public synchronized DiscoveryLiteDescriptorBuilder getDescriptorFor(SimulatedLease simulatedLease, OakTestConfig config) {
@@ -112,6 +121,17 @@ public class SimulatedLeaseCollection {
 
     private int getClusterNodeId(SimulatedLease lease) {
         return getClusterNodeId(lease.getSlingId(), lease.getClusterNodeIdHint());
+    }
+
+    int getClusterNodeId(String slingId) {
+        if (clusterNodeIds == null) {
+            return -1;
+        }
+        final Integer id = clusterNodeIds.get(slingId);
+        if (id == null) {
+            return -1;
+        }
+        return id;
     }
 
     private int getClusterNodeId(String slingId, int idHint) {
