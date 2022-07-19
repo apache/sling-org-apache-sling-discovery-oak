@@ -340,46 +340,54 @@ public class PartialStartupTest {
     public void testNoLocalSyncTokenYet() throws Exception {
         MiniInstance instance1 = create(1, true, true, null);
         MiniInstance instance2 = create(2, true, true, "2");
+        MiniInstance instance3 = create(3, false, false, null);
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, false, false, null)));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
+        instance3 = create(3, true, false, null);
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, true, false, null)));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
+        instance3 = create(3, false, true, null);
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, false, true, null)));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
+        instance3 = create(3, false, false, "2");
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, false, false, "2")));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
+        instance3 = create(3, true, false, "2");
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, true, false, "2")));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
+        instance3 = create(3, false, true, "2");
         try {
-            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, false, true, "2")));
+            instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
             fail("should complain");
         } catch(Exception e) {
             // this empty catch is okay
         }
         System.out.println(" => instance1 is " + instance1);
         System.out.println(" => instance2 is " + instance2);
-        instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, true, true, null)));
-        instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, create(3, true, true, "2")));
+        instance3 = create(3, true, true, null);
+        instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
+        instance3 = create(3, true, true, "2");
+        instance1.getLocalClusterView(simpleDesc(2, instance1, instance2, instance3));
     }
 
     @Test
