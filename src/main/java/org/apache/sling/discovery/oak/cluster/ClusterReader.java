@@ -122,7 +122,7 @@ public class ClusterReader {
         if (leaderElectionId == null) {
             return InstanceReadResult.fromErrorMsg("no leaderElectionId available yet for slingId=" + slingId);
         }
-        final boolean hasSeenLocalInstance = hasSeenLocalinstance(clusterNodeId, slingId, leaderElectionId);
+        final boolean hasSeenLocalInstance = hasSeenLocalInstance(clusterNodeId, slingId, leaderElectionId);
         final long syncToken = readSyncToken(slingId);
         if (syncToken == -1 && failOnMissingSyncToken && !hasSeenLocalInstance) {
             return InstanceReadResult.fromErrorMsg("no syncToken available yet for slingId=" + slingId);
@@ -130,7 +130,7 @@ public class ClusterReader {
         return InstanceReadResult.fromInstance(new InstanceInfo(clusterNodeId, slingId, syncToken, leaderElectionId));
     }
 
-    private boolean hasSeenLocalinstance(int clusterNodeId, String slingId,
+    private boolean hasSeenLocalInstance(int clusterNodeId, String slingId,
             String leaderElectionId) {
         InstanceInfo instance = seenLocalInstances.get(clusterNodeId);
         if (instance == null) {

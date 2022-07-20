@@ -286,7 +286,7 @@ public class OakClusterViewService implements ClusterViewService {
                 throw new Exception("Cannot resolve oak-clusterNodeId "+id+" to a slingId");
             }
             if (!in.isSyncTokenNewerOrEqual(seqNum)) {
-                System.out.println("Not seen syncToken (" + seqNum + ") of this instance yet : " + in);
+                logSilencer.infoOrDebug("Not seen syncToken (" + seqNum + ") of this instance yet : " + in);
                 seenAllSyncTokens = false;
             }
             Map<String, String> properties = readProperties(slingId, resourceResolver);
