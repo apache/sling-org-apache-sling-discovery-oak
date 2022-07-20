@@ -76,7 +76,7 @@ public class ClusterReader {
             return Long.parseLong(syncTokenStr);
         } catch (NumberFormatException nfe) {
             logger.warn(
-                    "readSyncToken: unparsable (non long) syncToken: " + syncTokenStr);
+                    "readSyncToken: unparsable (non long) syncToken: {}", syncTokenStr);
             return -1;
         }
     }
