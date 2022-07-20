@@ -70,9 +70,6 @@ public class SimulatedLeaseCollection {
 
     public synchronized void hooked(SimulatedLease lease) {
         leases.add(lease);
-//        if (leases.size() > 1) {
-//            incSeqNum();
-//        }
     }
 
     public synchronized void unhooked(SimulatedLease lease) {
