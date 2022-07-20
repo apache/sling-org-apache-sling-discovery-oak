@@ -651,7 +651,7 @@ public class OakDiscoveryServiceTest {
         builder2.getConfig().setSyncTokenEnabled(true);
         builder2.getConfig().setSuppressPartiallyStartedInstance(true);
 
-        // 2. start instance 2 normally -> call builder1.build()
+        // 2. start instance 2 normally -> call builder2.build()
         VirtualInstance instance2 = builder2.build();
         DummyListener listener2 = new DummyListener();
         OakDiscoveryService discoveryService2 = (OakDiscoveryService) instance2.getDiscoveryService();
