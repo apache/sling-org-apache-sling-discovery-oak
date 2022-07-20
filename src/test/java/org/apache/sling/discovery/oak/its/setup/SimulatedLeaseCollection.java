@@ -121,9 +121,6 @@ public class SimulatedLeaseCollection {
     }
 
     int getClusterNodeId(String slingId) {
-        if (clusterNodeIds == null) {
-            return -1;
-        }
         final Integer id = clusterNodeIds.get(slingId);
         if (id == null) {
             return -1;
