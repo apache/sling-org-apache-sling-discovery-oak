@@ -637,6 +637,7 @@ public class OakDiscoveryServiceTest {
         instance1.heartbeatsAndCheckView();
         assertEquals(0, listener1.countEvents());
         instance1.heartbeatsAndCheckView();
+        waitForEquals(listener1, 1, 1000);
         assertEquals(1, listener1.countEvents());
 
         OakVirtualInstanceBuilder builder2 =
