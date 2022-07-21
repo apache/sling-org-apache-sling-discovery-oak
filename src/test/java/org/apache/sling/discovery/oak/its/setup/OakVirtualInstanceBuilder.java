@@ -210,14 +210,14 @@ public class OakVirtualInstanceBuilder extends VirtualInstanceBuilder {
         return OakBacklogClusterSyncService.testConstructorAndActivate(getConfig(), getIdMapService(), getSlingSettingsService(), getResourceResolverFactory());
     }
 
-    private SyncTokenService getSyncTokenService() throws Exception {
+    public SyncTokenService getSyncTokenService() throws Exception {
         if (syncTokenService == null) {
             syncTokenService = createSyncTokenService();
         }
         return syncTokenService;
     }
 
-    private SyncTokenService createSyncTokenService() {
+    protected SyncTokenService createSyncTokenService() {
         return SyncTokenService.testConstructorAndActivate(getConfig(), getResourceResolverFactory(), getSlingSettingsService());
     }
 
