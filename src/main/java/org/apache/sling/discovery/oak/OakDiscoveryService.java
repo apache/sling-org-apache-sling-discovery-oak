@@ -32,13 +32,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Deactivate;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.ReferenceCardinality;
-import org.apache.felix.scr.annotations.ReferencePolicy;
-import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
 import org.apache.sling.api.resource.PersistenceException;
@@ -74,6 +67,12 @@ import org.apache.sling.settings.SlingSettingsService;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +81,7 @@ import org.slf4j.LoggerFactory;
  * implementation for detecting changes in a cluster and only supports one
  * cluster (of which this instance is part of).
  */
-@Component(immediate = true)
-@Service(value = { DiscoveryService.class, OakDiscoveryService.class })
+@Component(immediate = true, service = {DiscoveryService.class, OakDiscoveryService.class})
 public class OakDiscoveryService extends BaseDiscoveryService {
 
     private final static Logger logger = LoggerFactory.getLogger(OakDiscoveryService.class);
@@ -91,20 +89,18 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     @Reference
     private SlingSettingsService settingsService;
 
-    @Reference(cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, policy = ReferencePolicy.DYNAMIC, referenceInterface = TopologyEventListener.class)
-    private TopologyEventListener[] eventListeners = new TopologyEventListener[0];
-
     /**
      * All property providers.
      */
-    @Reference(cardinality = ReferenceCardinality.OPTIONAL_MULTIPLE, policy = ReferencePolicy.DYNAMIC, referenceInterface = PropertyProvider.class, updated = "updatedPropertyProvider")
     private List<ProviderInfo> providerInfos = new ArrayList<ProviderInfo>();
 
-    /** lock object used for synching bind/unbind and topology event sending **/
+    /**
+     * lock object used for syncing bind/unbind and topology event sending
+     **/
     private final Object lock = new Object();
 
     /**
-     * whether or not this service is activated - necessary to avoid sending
+     * whether this service is activated - necessary to avoid sending
      * events to discovery awares before activate is done
      **/
     private volatile boolean activated = false;
@@ -139,7 +135,9 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     @Reference
     private SyncTokenService syncTokenService;
 
-    /** the slingId of the local instance **/
+    /**
+     * the slingId of the local instance
+     **/
     private String slingId;
 
     private ServiceRegistration mbeanRegistration;
@@ -164,16 +162,16 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     };
 
     public static OakDiscoveryService testConstructor(SlingSettingsService settingsService,
-            AnnouncementRegistry announcementRegistry,
-            ConnectorRegistry connectorRegistry,
-            ClusterViewService clusterViewService,
-            Config config,
-            OakViewChecker connectorPinger,
-            Scheduler scheduler,
-            IdMapService idMapService,
-            OakBacklogClusterSyncService oakBacklogClusterSyncService,
-            SyncTokenService syncTokenService,
-            ResourceResolverFactory factory) {
+                                                      AnnouncementRegistry announcementRegistry,
+                                                      ConnectorRegistry connectorRegistry,
+                                                      ClusterViewService clusterViewService,
+                                                      Config config,
+                                                      OakViewChecker connectorPinger,
+                                                      Scheduler scheduler,
+                                                      IdMapService idMapService,
+                                                      OakBacklogClusterSyncService oakBacklogClusterSyncService,
+                                                      SyncTokenService syncTokenService,
+                                                      ResourceResolverFactory factory) {
         OakDiscoveryService discoService = new OakDiscoveryService();
         discoService.settingsService = settingsService;
         discoService.announcementRegistry = announcementRegistry;
@@ -191,7 +189,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
 
     @Override
     protected void handleIsolatedFromTopology() {
-        if (oakViewChecker!=null) {
+        if (oakViewChecker != null) {
             // SLING-5030 part 2: when we detect being isolated we should
             // step at the end of the leader-election queue and
             // that can be achieved by resetting the leaderElectionId
@@ -239,22 +237,20 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         }
         viewStateManager = ViewStateManagerFactory.newViewStateManager(viewStateManagerLock, consistencyService);
 
-        if (config.getMinEventDelay()>0) {
+        if (config.getMinEventDelay() > 0) {
             viewStateManager.installMinEventDelayHandler(this, scheduler, config.getMinEventDelay());
         }
 
         final String isolatedClusterId = UUID.randomUUID().toString();
         {
-            // create a pre-voting/isolated topologyView which would be used
-            // until the first voting has finished.
+            // create a pre-voting/isolated topologyView which would be used until the first voting has finished.
             // this way for the single-instance case the clusterId can
-            // remain the same between a getTopology() that is invoked before
-            // the first TOPOLOGY_INIT and afterwards
+            // remain the same between a getTopology() that is invoked before the first TOPOLOGY_INIT and afterwards
             DefaultClusterView isolatedCluster = new DefaultClusterView(isolatedClusterId);
-            Map<String, String> emptyProperties = new HashMap<String, String>();
+            Map<String, String> emptyProperties = new HashMap<>();
             DefaultInstanceDescription isolatedInstance =
                     new DefaultInstanceDescription(isolatedCluster, true, true, slingId, emptyProperties);
-            Collection<InstanceDescription> col = new ArrayList<InstanceDescription>();
+            Collection<InstanceDescription> col = new ArrayList<>();
             col.add(isolatedInstance);
             final DefaultTopologyView topology = new DefaultTopologyView();
             topology.addInstances(col);
@@ -271,7 +267,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         oakViewChecker.initialize(this);
 
         viewStateManagerLock.lock();
-        try{
+        try {
             viewStateManager.handleActivated();
 
             doUpdateProperties();
@@ -295,7 +291,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
 
             viewStateManager.bind(changePropagationListener);
         } finally {
-            if (viewStateManagerLock!=null) {
+            if (viewStateManagerLock != null) {
                 viewStateManagerLock.unlock();
             }
         }
@@ -304,13 +300,13 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         if (topologyConnectorURLs != null) {
             for (int i = 0; i < topologyConnectorURLs.length; i++) {
                 final URL aURL = topologyConnectorURLs[i];
-                if (aURL!=null) {
-                	try{
-                		logger.info("activate: registering outgoing topology connector to "+aURL);
-                		connectorRegistry.registerOutgoingConnector(clusterViewService, aURL);
-                	} catch (final Exception e) {
-                		logger.info("activate: could not register url: "+aURL+" due to: "+e, e);
-                	}
+                if (aURL != null) {
+                    try {
+                        logger.info("activate: registering outgoing topology connector to " + aURL);
+                        connectorRegistry.registerOutgoingConnector(clusterViewService, aURL);
+                    } catch (final Exception e) {
+                        logger.info("activate: could not register url: " + aURL + " due to: " + e, e);
+                    }
                 }
             }
         }
@@ -325,40 +321,45 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     protected void deactivate() {
         logger.debug("OakDiscoveryService deactivated.");
         viewStateManagerLock.lock();
-        try{
+        try {
             viewStateManager.unbind(changePropagationListener);
 
             viewStateManager.handleDeactivated();
 
             activated = false;
         } finally {
-            if (viewStateManagerLock!=null) {
+            if (viewStateManagerLock != null) {
                 viewStateManagerLock.unlock();
             }
         }
-        try{
-            if ( this.mbeanRegistration != null ) {
+        try {
+            if (this.mbeanRegistration != null) {
                 this.mbeanRegistration.unregister();
                 this.mbeanRegistration = null;
             }
-        } catch(Exception e) {
-            logger.error("deactivate: Error on unregister: "+e, e);
+        } catch (Exception e) {
+            logger.error("deactivate: Error on unregister: " + e, e);
         }
     }
 
     /**
      * bind a topology event listener
      */
+    @Reference(name = "eventListeners",
+            service = TopologyEventListener.class,
+            cardinality = ReferenceCardinality.MULTIPLE,
+            policy = ReferencePolicy.DYNAMIC,
+            bind = "bindTopologyEventListener", unbind = "bindTopologyEventListener")
     protected void bindTopologyEventListener(final TopologyEventListener eventListener) {
         viewStateManagerLock.lock();
-        try{
+        try {
             if (!activated) {
                 pendingListeners.add(eventListener);
             } else {
                 viewStateManager.bind(eventListener);
             }
         } finally {
-            if (viewStateManagerLock!=null) {
+            if (viewStateManagerLock != null) {
                 viewStateManagerLock.unlock();
             }
         }
@@ -369,14 +370,14 @@ public class OakDiscoveryService extends BaseDiscoveryService {
      */
     protected void unbindTopologyEventListener(final TopologyEventListener eventListener) {
         viewStateManagerLock.lock();
-        try{
+        try {
             if (!activated) {
                 pendingListeners.remove(eventListener);
             } else {
                 viewStateManager.unbind(eventListener);
             }
         } finally {
-            if (viewStateManagerLock!=null) {
+            if (viewStateManagerLock != null) {
                 viewStateManagerLock.unlock();
             }
         }
@@ -385,10 +386,13 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     /**
      * Bind a new property provider.
      */
-    protected void bindPropertyProvider(final PropertyProvider propertyProvider,
-                                        final Map<String, Object> props) {
-        logger.debug("bindPropertyProvider: Binding PropertyProvider {}",
-                propertyProvider);
+    @Reference(name = "providerInfos",
+            service = PropertyProvider.class,
+            cardinality = ReferenceCardinality.MULTIPLE,
+            policy = ReferencePolicy.DYNAMIC,
+            bind = "bindPropertyProvider", unbind = "unbindPropertyProvider", updated = "updatedPropertyProvider")
+    protected void bindPropertyProvider(final PropertyProvider propertyProvider, final Map<String, Object> props) {
+        logger.debug("bindPropertyProvider: Binding PropertyProvider {}", propertyProvider);
 
         synchronized (lock) {
             try {
@@ -404,8 +408,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     /**
      * Bind a new property provider.
      */
-    private void bindPropertyProviderInteral(final PropertyProvider propertyProvider,
-            final Map<String, Object> props) {
+    private void bindPropertyProviderInteral(final PropertyProvider propertyProvider, final Map<String, Object> props) {
         final ProviderInfo info = new ProviderInfo(propertyProvider, props);
         this.providerInfos.add(info);
         Collections.sort(this.providerInfos);
@@ -418,10 +421,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     /**
      * Update a property provider.
      */
-    protected void updatedPropertyProvider(final PropertyProvider propertyProvider,
-                                           final Map<String, Object> props) {
-        logger.debug("bindPropertyProvider: Updating PropertyProvider {}",
-                propertyProvider);
+    protected void updatedPropertyProvider(final PropertyProvider propertyProvider, final Map<String, Object> props) {
+        logger.debug("bindPropertyProvider: Updating PropertyProvider {}", propertyProvider);
 
         synchronized (lock) {
             try {
@@ -438,10 +439,8 @@ public class OakDiscoveryService extends BaseDiscoveryService {
     /**
      * Unbind a property provider
      */
-    protected void unbindPropertyProvider(final PropertyProvider propertyProvider,
-                                          final Map<String, Object> props) {
-        logger.debug("unbindPropertyProvider: Releasing PropertyProvider {}",
-                propertyProvider);
+    protected void unbindPropertyProvider(final PropertyProvider propertyProvider, final Map<String, Object> props) {
+        logger.debug("unbindPropertyProvider: Releasing PropertyProvider {}", propertyProvider);
         synchronized (lock) {
             try {
                 this.unbindPropertyProviderInternal(propertyProvider, props, true);
@@ -461,7 +460,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             final Map<String, Object> props, final boolean update) {
 
         final ProviderInfo info = new ProviderInfo(propertyProvider, props);
-        if ( this.providerInfos.remove(info) && update ) {
+        if (this.providerInfos.remove(info) && update) {
             if (activated) {
                 this.doUpdateProperties();
             }
@@ -476,6 +475,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
      * The properties are stored in the repository under Config.getClusterInstancesPath()
      * and announced in the topology.
      * <p>
+     *
      * @see Config#getClusterInstancesPath()
      */
     private void doUpdateProperties() {
@@ -490,14 +490,14 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         if (rrf == null || c == null || sid == null) {
             // cannot update the properties then..
             logger.debug("doUpdateProperties: too early to update the properties. "
-                    + "resourceResolverFactory ({}), config ({}) or slingId ({}) not yet set.",
-                    new Object[] {rrf, c, sid});
+                            + "resourceResolverFactory ({}), config ({}) or slingId ({}) not yet set.",
+                    new Object[]{rrf, c, sid});
             return;
         } else {
             logger.debug("doUpdateProperties: updating properties now..");
         }
 
-        final Map<String, String> newProps = new HashMap<String, String>();
+        final Map<String, String> newProps = new HashMap<>();
         for (final ProviderInfo info : this.providerInfos) {
             info.refreshProperties();
             newProps.putAll(info.properties);
@@ -505,14 +505,10 @@ public class OakDiscoveryService extends BaseDiscoveryService {
 
         ResourceResolver resourceResolver = null;
         try {
-            resourceResolver = rrf
-                    .getServiceResourceResolver(null);
+            resourceResolver = rrf.getServiceResourceResolver(null);
 
             Resource myInstance = ResourceHelper
-                    .getOrCreateResource(
-                            resourceResolver,
-                            c.getClusterInstancesPath()
-                                    + "/" + sid + "/properties");
+                    .getOrCreateResource(resourceResolver, c.getClusterInstancesPath() + "/" + sid + "/properties");
             // SLING-2879 - revert/refresh resourceResolver here to work
             // around a potential issue with jackrabbit in a clustered environment
             resourceResolver.revert();
@@ -520,33 +516,33 @@ public class OakDiscoveryService extends BaseDiscoveryService {
 
             final ModifiableValueMap myInstanceMap = myInstance.adaptTo(ModifiableValueMap.class);
             final Set<String> keys = new HashSet<String>(myInstanceMap.keySet());
-            for(final String key : keys) {
+            for (final String key : keys) {
                 if (newProps.containsKey(key)) {
                     // perfect
                     continue;
-                } else if (key.indexOf(":")!=-1) {
+                } else if (key.indexOf(":") != -1) {
                     // ignore
                     continue;
                 } else {
                     // remove
-                	myInstanceMap.remove(key);
+                    myInstanceMap.remove(key);
                 }
             }
 
             boolean anyChanges = false;
-            for(final Entry<String, String> entry : newProps.entrySet()) {
-            	Object existingValue = myInstanceMap.get(entry.getKey());
-            	if (entry.getValue().equals(existingValue)) {
-            	    // SLING-3389: dont rewrite the properties if nothing changed!
+            for (final Entry<String, String> entry : newProps.entrySet()) {
+                Object existingValue = myInstanceMap.get(entry.getKey());
+                if (entry.getValue().equals(existingValue)) {
+                    // SLING-3389: dont rewrite the properties if nothing changed!
                     if (logger.isDebugEnabled()) {
                         logger.debug("doUpdateProperties: unchanged: {}={}", entry.getKey(), entry.getValue());
                     }
-            	    continue;
-            	}
-            	if (logger.isDebugEnabled()) {
-            	    logger.debug("doUpdateProperties: changed: {}={}", entry.getKey(), entry.getValue());
-            	}
-            	anyChanges = true;
+                    continue;
+                }
+                if (logger.isDebugEnabled()) {
+                    logger.debug("doUpdateProperties: changed: {}={}", entry.getKey(), entry.getValue());
+                }
+                anyChanges = true;
                 myInstanceMap.put(entry.getKey(), entry.getValue());
             }
 
@@ -554,14 +550,11 @@ public class OakDiscoveryService extends BaseDiscoveryService {
                 resourceResolver.commit();
             }
         } catch (LoginException e) {
-            logger.error(
-                    "handleEvent: could not log in administratively: " + e, e);
-            throw new RuntimeException("Could not log in to repository (" + e
-                    + ")", e);
+            logger.error("handleEvent: could not log in administratively: " + e, e);
+            throw new RuntimeException("Could not log in to repository (" + e + ")", e);
         } catch (PersistenceException e) {
             logger.error("handleEvent: got a PersistenceException: " + e, e);
-            throw new RuntimeException(
-                    "Exception while talking to repository (" + e + ")", e);
+            throw new RuntimeException( "Exception while talking to repository (" + e + ")", e);
         } finally {
             if (resourceResolver != null) {
                 resourceResolver.close();
@@ -600,7 +593,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         public final Map<String, String> properties = new HashMap<String, String>();
 
         public ProviderInfo(final PropertyProvider provider,
-                final Map<String, Object> serviceProps) {
+                            final Map<String, Object> serviceProps) {
             this.provider = provider;
             this.propertyProperties = serviceProps.get(PropertyProvider.PROPERTY_PROPERTIES);
             final Object sr = serviceProps.get(Constants.SERVICE_RANKING);
@@ -618,7 +611,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             if (this.propertyProperties instanceof String) {
                 final String val = provider.getProperty((String) this.propertyProperties);
                 if (val != null) {
-                	putPropertyIfValid((String) this.propertyProperties, val);
+                    putPropertyIfValid((String) this.propertyProperties, val);
                 }
             } else if (this.propertyProperties instanceof String[]) {
                 for (final String name : (String[]) this.propertyProperties) {
@@ -630,14 +623,16 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             }
         }
 
-        /** SLING-2883 : put property only if valid **/
-		private void putPropertyIfValid(final String name, final String val) {
-			if (PropertyNameHelper.isValidPropertyName(name)) {
-				this.properties.put(name, val);
-			}
-		}
+        /**
+         * SLING-2883 : put property only if valid
+         **/
+        private void putPropertyIfValid(final String name, final String val) {
+            if (PropertyNameHelper.isValidPropertyName(name)) {
+                this.properties.put(name, val);
+            }
+        }
 
-		/**
+        /**
          * @see java.lang.Comparable#compareTo(java.lang.Object)
          */
         @Override
@@ -671,7 +666,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
      */
     public void checkForTopologyChange() {
         viewStateManagerLock.lock();
-        try{
+        try {
             if (!activated) {
                 logger.debug("checkForTopologyChange: not yet activated, ignoring");
                 return;
@@ -688,7 +683,7 @@ public class OakDiscoveryService extends BaseDiscoveryService {
                 viewStateManager.handleChanging();
             }
         } finally {
-            if (viewStateManagerLock!=null) {
+            if (viewStateManagerLock != null) {
                 viewStateManagerLock.unlock();
             }
         }
@@ -712,8 +707,11 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         return announcementRegistry;
     }
 
-    /** for testing only
-     * @return */
+    /**
+     * for testing only
+     *
+     * @return
+     */
     public ViewStateManager getViewStateManager() {
         return viewStateManager;
     }

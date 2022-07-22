@@ -1,0 +1,13 @@
+Import-Package:\
+    org.apache.felix.webconsole;resolution:=optional,\
+    org.apache.felix.hc.api;resolution:=optional,\
+    *
+
+Export-Package:\
+    !org.apache.sling.discovery.oak
+
+Provide-Capability:\
+    osgi.service;objectClass:List<String>="org.apache.sling.discovery.oak.Config,org.apache.sling.discovery.base.connectors.BaseConfig,org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig"
+
+-includeresource:\
+    @commons-net-*.jar!/org/apache/commons/net/util/SubnetUtils*
