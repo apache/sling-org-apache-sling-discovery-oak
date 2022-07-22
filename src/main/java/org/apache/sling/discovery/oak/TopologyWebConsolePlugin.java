@@ -38,6 +38,13 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Properties;
+import org.apache.felix.scr.annotations.Property;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.webconsole.AbstractWebConsolePlugin;
 import org.apache.felix.webconsole.WebConsoleConstants;
 import org.apache.sling.api.resource.LoginException;
@@ -60,11 +67,6 @@ import org.apache.sling.discovery.commons.InstancesDiff;
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteDescriptor;
 import org.apache.sling.discovery.commons.providers.spi.base.OakBacklogClusterSyncService;
 import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.propertytypes.ServiceDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,14 +74,16 @@ import org.slf4j.LoggerFactory;
  * Simple webconsole which gives an overview of the topology visible by the
  * discovery service
  */
-@Component(service = { TopologyEventListener.class, Servlet.class },
-        property = {
-                WebConsoleConstants.PLUGIN_LABEL+"="+TopologyWebConsolePlugin.LABEL,
-                WebConsoleConstants.PLUGIN_TITLE+"="+TopologyWebConsolePlugin.TITLE,
-                "felix.webconsole.category=Sling",
-                "felix.webconsole.configprinter.modes={zip}"
-        })
-@ServiceDescription("Apache Sling Web Console Plugin to display Background servlets and ExecutionEngine status")
+@Component
+@Service(value = { TopologyEventListener.class, Servlet.class })
+@Properties({
+    @Property(name=org.osgi.framework.Constants.SERVICE_DESCRIPTION,
+            value="Apache Sling Web Console Plugin to display Background servlets and ExecutionEngine status"),
+    @Property(name=WebConsoleConstants.PLUGIN_LABEL, value=TopologyWebConsolePlugin.LABEL),
+    @Property(name=WebConsoleConstants.PLUGIN_TITLE, value=TopologyWebConsolePlugin.TITLE),
+    @Property(name="felix.webconsole.category", value="Sling"),
+    @Property(name="felix.webconsole.configprinter.modes", value={"zip"})
+})
 @SuppressWarnings("serial")
 public class TopologyWebConsolePlugin extends AbstractWebConsolePlugin implements TopologyEventListener {
 

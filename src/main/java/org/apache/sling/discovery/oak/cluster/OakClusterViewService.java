@@ -32,6 +32,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.apache.felix.scr.annotations.Activate;
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
 import org.apache.sling.api.resource.PersistenceException;
@@ -51,16 +55,14 @@ import org.apache.sling.discovery.commons.providers.util.LogSilencer;
 import org.apache.sling.discovery.commons.providers.util.ResourceHelper;
 import org.apache.sling.discovery.oak.Config;
 import org.apache.sling.settings.SlingSettingsService;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Oak-based implementation of the ClusterViewService interface.
  */
-@Component (service = ClusterViewService.class)
+@Component
+@Service(value = ClusterViewService.class)
 public class OakClusterViewService implements ClusterViewService {
     
     private static final String PROPERTY_CLUSTER_ID = "clusterId";
@@ -493,8 +495,10 @@ public class OakClusterViewService implements ClusterViewService {
     }
 
     private Map<String, String> readProperties(String slingId, ResourceResolver resourceResolver) {
-        Resource res = resourceResolver.getResource(config.getClusterInstancesPath() + "/" + slingId);
-        final Map<String, String> props = new HashMap<>();
+        Resource res = resourceResolver.getResource(
+                        config.getClusterInstancesPath() + "/"
+                                + slingId);
+        final Map<String, String> props = new HashMap<String, String>();
         if (res != null) {
             final Resource propertiesChild = res.getChild("properties");
             if (propertiesChild != null) {

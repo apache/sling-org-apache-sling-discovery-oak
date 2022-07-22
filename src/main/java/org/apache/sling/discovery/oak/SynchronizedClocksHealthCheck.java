@@ -25,14 +25,18 @@ import java.util.Set;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Properties;
+import org.apache.felix.scr.annotations.Property;
+import org.apache.felix.scr.annotations.PropertyUnbounded;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.discovery.base.connectors.announcement.Announcement;
 import org.apache.sling.discovery.base.connectors.announcement.AnnouncementRegistry;
 import org.apache.felix.hc.api.HealthCheck;
 import org.apache.felix.hc.api.Result;
 import org.apache.felix.hc.api.FormattingResultLog;
 import org.apache.sling.settings.SlingSettingsService;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,12 +54,12 @@ import org.slf4j.LoggerFactory;
  * info</li>
  * </ul>
  */
-@Component(immediate = true, service = HealthCheck.class,
-        property = {
-                HealthCheck.NAME + "=Synchronized Clocks",
-                HealthCheck.MBEAN_NAME + "=slingDiscoveryOakSynchronizedClocks"
-        })
-        //label = "Apache Sling Discovery Oak Synchronized Clocks Health Check")
+@Component(immediate = true, metatype = true, label = "Apache Sling Discovery Oak Synchronized Clocks Health Check")
+@Properties({
+        @Property(name = HealthCheck.NAME, value = "Synchronized Clocks", description = "Health Check name", label = "Name"),
+        @Property(name = HealthCheck.TAGS, unbounded = PropertyUnbounded.ARRAY, description = "Health Check tags", label = "Tags"),
+        @Property(name = HealthCheck.MBEAN_NAME, value = "slingDiscoveryOakSynchronizedClocks", description = "Health Check MBean name", label = "MBean name") })
+@Service(value = HealthCheck.class)
 public class SynchronizedClocksHealthCheck implements HealthCheck {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
