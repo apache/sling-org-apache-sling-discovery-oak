@@ -72,4 +72,8 @@ public class SimulatedLease {
     public void incSeqNum() {
         collection.incSeqNum();
     }
+
+    public int getClusterNodeId() {
+        return collection.getClusterNodeId(slingId);
+    }
 }
