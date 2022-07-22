@@ -21,6 +21,11 @@ package org.apache.sling.discovery.oak.pinger;
 import java.util.Calendar;
 import java.util.UUID;
 
+import org.apache.felix.scr.annotations.Component;
+import org.apache.felix.scr.annotations.Reference;
+import org.apache.felix.scr.annotations.ReferenceCardinality;
+import org.apache.felix.scr.annotations.ReferencePolicy;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
 import org.apache.sling.api.resource.PersistenceException;
@@ -37,10 +42,6 @@ import org.apache.sling.discovery.commons.providers.util.ResourceHelper;
 import org.apache.sling.discovery.oak.Config;
 import org.apache.sling.discovery.oak.OakDiscoveryService;
 import org.apache.sling.settings.SlingSettingsService;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.http.HttpService;
 
 /**
@@ -53,13 +54,11 @@ import org.osgi.service.http.HttpService;
  * Remote heartbeats are POSTs to remote TopologyConnectorServlets using
  * discovery.base
  */
-@Component(service = OakViewChecker.class,
-        reference = {
-                @Reference(name = "HttpService",
-                        service = HttpService.class,
-                        cardinality = ReferenceCardinality.MULTIPLE,
-                        policy = ReferencePolicy.DYNAMIC)
-        })
+@Component
+@Service(value = OakViewChecker.class)
+@Reference(referenceInterface=HttpService.class,
+           cardinality=ReferenceCardinality.OPTIONAL_MULTIPLE,
+           policy=ReferencePolicy.DYNAMIC)
 public class OakViewChecker extends BaseViewChecker {
 
     @Reference
