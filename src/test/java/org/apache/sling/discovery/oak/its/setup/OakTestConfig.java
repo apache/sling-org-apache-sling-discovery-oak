@@ -100,4 +100,8 @@ public class OakTestConfig extends Config implements ModifiableTestBaseConfig {
     public void setSuppressPartiallyStartedInstance(boolean suppressPartiallyStartedInstance) {
         this.suppressPartiallyStartedInstance = suppressPartiallyStartedInstance;
     }
+
+    public void setDiscoveryLiteCheckInterval(int discoveryLiteCheckInterval) {
+        this.discoveryLiteCheckInterval = discoveryLiteCheckInterval;
+    }
 }
