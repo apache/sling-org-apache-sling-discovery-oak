@@ -23,7 +23,6 @@ import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.sling.discovery.base.connectors.BaseConfig;
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig;
 import org.osgi.framework.BundleContext;
@@ -52,6 +51,7 @@ import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAU
 import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.DEFAULT_TOPOLOGY_CONNECTOR_WHITELIST;
 import static org.apache.sling.discovery.oak.DiscoveryServiceCentralConfig.JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME;
 
+import static org.osgi.util.converter.Converters.standardConverter;
 /**
  * Configuration object used as a central config point for the discovery service
  * implementation
@@ -451,8 +451,7 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
             return joinerDelayOverwrite;
         }
         final String systemPropertyValue = System.getProperty(JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME);
-        final boolean newJoinerDelayOverwrite =
-                PropertiesUtil.toBoolean(systemPropertyValue, configValue);
+        final boolean newJoinerDelayOverwrite = standardConverter().convert(systemPropertyValue).defaultValue(configValue).to(Boolean.class);
         if (joinerDelayOverwriteNextCheck == 0) {
             logger.info("applyJoinerDelayOverwrite : initialization."
                     + " system property '" + JOINER_DELAY_ENABLED_SYSTEM_PROPERTY_NAME + "' = " + systemPropertyValue
