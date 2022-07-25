@@ -22,7 +22,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 
 @SuppressWarnings("java:S100")
-@ObjectClassDefinition(name = "%config.name", description = "%config.description")
+@ObjectClassDefinition(
+        localization = "OSGI-INF/l10n/metatype",
+        name = "%config.name",
+        description = "%config.description")
 public @interface DiscoveryServiceCentralConfig {
 
     long DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT = 120;
@@ -52,47 +55,47 @@ public @interface DiscoveryServiceCentralConfig {
     /**
      * Configure the timeout (in seconds) after which an instance is considered dead/crashed.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%connectorPingTimeout.name", description = "%connectorPingTimeout.description")
     long connectorPingTimeout() default DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT;
 
     /**
      * Configure the interval (in seconds) according to which the heartbeats are exchanged in the topology.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%connectorPingInterval.name", description = "%connectorPingInterval.description")
     long connectorPingInterval() default DEFAULT_TOPOLOGY_CONNECTOR_INTERVAL;
 
-    @AttributeDefinition
+    @AttributeDefinition(name = "%discoveryLiteCheckInterval.name", description = "%discoveryLiteCheckInterval.description")
     long discoveryLiteCheckInterval() default DEFAULT_DISCOVERY_LITE_CHECK_INTERVAL;
 
-    @AttributeDefinition
+    @AttributeDefinition(name = "%clusterSyncServiceTimeout.name", description = "%clusterSyncServiceTimeout.description")
     long clusterSyncServiceTimeout() default DEFAULT_CLUSTER_SYNC_SERVICE_TIMEOUT;
 
-    @AttributeDefinition
+    @AttributeDefinition(name = "%clusterSyncServiceInterval.name", description = "%clusterSyncServiceInterval.description")
     long clusterSyncServiceInterval() default DEFAULT_CLUSTER_SYNC_SERVICE_INTERVAL;
 
     /**
      * If set to true a syncToken will be used on top of waiting for deactivating instances to be fully processed.
      * If set to false, only deactivating instances will be waited for to be fully processed.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%enableSyncToken.name", description = "%enableSyncToken.description")
     boolean enableSyncToken() default true;
 
     /**
      * Configure the time (in seconds) which must be passed at minimum between sending TOPOLOGY_CHANGING/_CHANGED (avoid flooding).
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%minEventDelay.name", description = "%minEventDelay.description")
     int minEventDelay() default DEFAULT_MIN_EVENT_DELAY;
 
     /**
      * Configure the socket connect timeout for topology connectors.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%socketConnectTimeout.name", description = "%socketConnectTimeout.description")
     int socketConnectTimeout() default DEFAULT_SOCKET_CONNECT_TIMEOUT;
 
     /**
      * Configure the socket read timeout (SO_TIMEOUT) for topology connectors.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%soTimeout.name", description = "%soTimeout.description")
     int soTimeout() default DEFAULT_SO_TIMEOUT;
 
     /**
@@ -128,34 +131,34 @@ public @interface DiscoveryServiceCentralConfig {
     /**
      * If set to true, hmac is enabled and the white list is disabled.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%hmacEnabled.name", description = "%hmacEnabled.description")
     boolean hmacEnabled() default false;
 
     /**
      * If set to true, and the whitelist is disabled, messages will be encrypted.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%enableEncryption.name", description = "%enableEncryption.description")
     boolean enableEncryption() default false;
 
     /**
      * The value fo the shared key, shared amongst all instances in the same cluster.
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%sharedKey.name", description = "%sharedKey.description")
     String sharedKey() default "";
 
-    @AttributeDefinition
+    @AttributeDefinition(name = "%hmacSharedKeyTTL.name", description = "%hmacSharedKeyTTL.description")
     long hmacSharedKeyTTL() default DEFAULT_SHARED_KEY_INTERVAL;
 
     /**
      * The property for defining the backoff factor for standby (loop) connectors
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%backoffStandbyFactor.name", description = "%backoffStandbyFactor.description")
     int backoffStandbyFactor() default DEFAULT_BACKOFF_STANDBY_FACTOR;
 
     /**
      * The property for defining the maximum backoff factor for stable connectors
      */
-    @AttributeDefinition
+    @AttributeDefinition(name = "%backoffStableFactor.name", description = "%backoffStableFactor.description")
     int backoffStableFactor() default DEFAULT_BACKOFF_STABLE_FACTOR;
 
     @AttributeDefinition
