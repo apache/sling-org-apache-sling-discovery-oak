@@ -50,12 +50,13 @@ import org.slf4j.LoggerFactory;
  * info</li>
  * </ul>
  */
-@Component(immediate = true, service = HealthCheck.class,
+@Component(
+        immediate = true,
+        service = HealthCheck.class,
         property = {
                 HealthCheck.NAME + "=Synchronized Clocks",
                 HealthCheck.MBEAN_NAME + "=slingDiscoveryOakSynchronizedClocks"
         })
-        //label = "Apache Sling Discovery Oak Synchronized Clocks Health Check")
 public class SynchronizedClocksHealthCheck implements HealthCheck {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
