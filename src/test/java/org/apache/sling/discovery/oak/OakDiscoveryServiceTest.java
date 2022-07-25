@@ -996,7 +996,7 @@ public class OakDiscoveryServiceTest {
             Thread.sleep(1000);
         }
         instance1.heartbeatsAndCheckView();
-        assertEquals(6, listener1.countEvents());
+        assertEquals(5 /*not yet CHANGING */, listener1.countEvents());
 
         // finish instance2 startup
         VirtualInstance instance2b = builder2b.build();
@@ -1012,12 +1012,12 @@ public class OakDiscoveryServiceTest {
         assertEquals(0, listener2b.countEvents());
         assertEquals(7, listener1.countEvents());
 
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < 4; i++) {
             Thread.sleep(1000);
             instance1.heartbeatsAndCheckView();
             instance2b.heartbeatsAndCheckView();
         }
-        waitForEquals(listener2b, 1, 1000);
+        waitForEquals(listener2b, 1, 2000);
         waitForEquals(listener1, 7, 2000); // had a flaky failure so giving it 2 sec
     }
 

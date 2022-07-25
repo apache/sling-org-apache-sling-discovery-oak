@@ -112,7 +112,7 @@ public class ClusterReader {
      * necessarily mean it has completely started - syncToken is not checked at this stage yet)
      * @throws PersistenceException 
      */
-    public InstanceReadResult readInstance(int clusterNodeId, boolean failOnMissingSyncToken) throws PersistenceException {
+    public InstanceReadResult readInstance(int clusterNodeId, boolean failOnMissingSyncToken, long seqNum) throws PersistenceException {
         final String slingId = idMapService.toSlingId(clusterNodeId, resourceResolver);
         if (slingId == null) {
             idMapService.clearCache();
@@ -124,8 +124,10 @@ public class ClusterReader {
         }
         final boolean hasSeenLocalInstance = hasSeenLocalInstance(clusterNodeId, slingId, leaderElectionId);
         final long syncToken = readSyncToken(slingId);
-        if (syncToken == -1 && failOnMissingSyncToken && !hasSeenLocalInstance) {
-            return InstanceReadResult.fromErrorMsg("no syncToken available yet for slingId=" + slingId);
+        if (failOnMissingSyncToken && !hasSeenLocalInstance) {
+            if (syncToken == -1 || (seqNum != -1 && syncToken < seqNum)) {
+                return InstanceReadResult.fromErrorMsg("no valid syncToken available yet for slingId=" + slingId + ", syncToken=" + syncToken);
+            }
         }
         return InstanceReadResult.fromInstance(new InstanceInfo(clusterNodeId, slingId, syncToken, leaderElectionId));
     }
