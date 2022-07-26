@@ -208,7 +208,7 @@ public class OakClusterViewService implements ClusterViewService {
         final Set<Integer> partiallyStartedClusterNodeIds = new HashSet<>();
         boolean suppressionEnabled = isSyncTokenEnabled() && isPartialSuppressionEnabled();
 
-        final InstanceReadResult myInstanceResult = reader.readInstance(me, false);
+        final InstanceReadResult myInstanceResult = reader.readInstance(me, false, -1);
         final InstanceInfo myInstance = myInstanceResult.getInstanceInfo();
         if (myInstance == null) {
             throw new UndefinedClusterViewException(Reason.NO_ESTABLISHED_VIEW, myInstanceResult.getErrorMsg());
@@ -239,12 +239,12 @@ public class OakClusterViewService implements ClusterViewService {
                 regularInstances.put(me, myInstance);
                 continue;
             }
-            InstanceReadResult readResult = reader.readInstance(id, suppressionEnabled);
+            InstanceReadResult readResult = reader.readInstance(id, suppressionEnabled, seqNum);
             InstanceInfo instanceInfo = readResult.getInstanceInfo();
             if (instanceInfo == null && !suppressionEnabled) {
                 // retry with a fresh idmap
                 idMapService.clearCache();
-                readResult = reader.readInstance(id, suppressionEnabled);
+                readResult = reader.readInstance(id, suppressionEnabled, seqNum);
                 instanceInfo = readResult.getInstanceInfo();
             }
             if (instanceInfo == null) {

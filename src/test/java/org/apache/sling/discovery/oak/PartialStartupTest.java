@@ -212,7 +212,7 @@ public class PartialStartupTest {
             try {
                 @SuppressWarnings("deprecation")
                 ClusterReader r = new ClusterReader(instance.resourceResolverFactory.getAdministrativeResourceResolver(null), instance.config, instance.idMapService, null);
-                InstanceReadResult i = r.readInstance(id, false);
+                InstanceReadResult i = r.readInstance(id, false, -1);
                 assertNotNull(i.getInstanceInfo());
                 System.out.println(" instance " + id + " read " + i.getInstanceInfo());
             } catch (LoginException | PersistenceException e) {
@@ -460,6 +460,7 @@ public class PartialStartupTest {
         assertNotNull(localView);
         assertNoPartiallyStarted(localView);
         assertEquals(2, localView.getInstances().size());
+        instance1.storeSyncToken("2");
         // from 2's point of view
         localView = instance2.getLocalClusterView(simpleDesc(2, instance1, instance2));
         assertNotNull(localView);
@@ -474,16 +475,16 @@ public class PartialStartupTest {
         assertEquals(1, localView.getInstances().size());
 
         // slow join 3
-        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, instance2, new Identifiable(3)));
+        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, new Identifiable(3)));
         instance1.storeSyncToken("4");
         assertNotNull(localView);
-        assertEquals(2, localView.getInstances().size());
+        assertEquals(1, localView.getInstances().size());
         assertPartiallyStarted(localView, 3);
 
         // rejoin 2
-        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, new Identifiable(3)));
         instance1.storeSyncToken("5");
         instance2.storeSyncToken("5");
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, new Identifiable(3)));
         assertNotNull(localView);
         assertPartiallyStarted(localView, 3);
         assertEquals(2, localView.getInstances().size());
@@ -518,10 +519,10 @@ public class PartialStartupTest {
         // instance2b starts up, reusing the clusterNodeId - but not sling level modifications yet - stealth
         MiniInstance instance2b = withNewSlingId(instance2);
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
-        assertEquals(2, localView.getInstances().size());
+        assertEquals(1, localView.getInstances().size());
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
-        assertEquals(2, localView.getInstances().size());
-        // storing the slingId means it is no longer considered as previously seen, hence suppression starts
+        assertEquals(1, localView.getInstances().size());
+        // storing the slingId doesn't change anything, it was already considered as not previously seen, hence suppressed
         instance2b.storeSlingId();
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
         assertEquals(1, localView.getInstances().size());
@@ -530,7 +531,7 @@ public class PartialStartupTest {
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
         assertEquals(1, localView.getInstances().size());
         // but once the syncToken is set, it would rejoin
-        instance2b.storeSyncToken("2");
+        instance2b.storeSyncToken("3");
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
         assertEquals(2, localView.getInstances().size());
     }
@@ -554,15 +555,25 @@ public class PartialStartupTest {
         MiniInstance instance2b = withSlingId(new Identifiable(3), instance2.slingId);
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
         assertEquals(1, localView.getInstances().size());
-        // storing slingId already resolves things, as the leaderElectionId is still there from the old instance
+        // storing slingId doesnt' change anything - still suppressed
         instance2b.storeSlingId();
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
-        assertEquals(2, localView.getInstances().size());
-        // so storing the leaderElectiOnId doesn't change anything now
+        assertEquals(1, localView.getInstances().size());
+        // storing the leaderElectiOnId still doesn't change anything
         instance2b.initLeaderElectionId();
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
-        assertEquals(2, localView.getInstances().size());
-        // but once the syncToken is set, it would rejoin
+        assertEquals(1, localView.getInstances().size());
+        // with the wrong syncToken it is still not in
+        instance2b.storeSyncToken("0");
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
+        assertEquals(1, localView.getInstances().size());
+        instance2b.storeSyncToken("1");
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
+        assertEquals(1, localView.getInstances().size());
+        instance2b.storeSyncToken("2");
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
+        assertEquals(1, localView.getInstances().size());
+        // only once the correct syncToken is set, it would rejoin
         instance2b.storeSyncToken("3");
         localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2b));
         assertEquals(2, localView.getInstances().size());
@@ -584,7 +595,7 @@ public class PartialStartupTest {
         instance2b.storeSlingId();
         instance2b.initLeaderElectionId();
         localView = instance1.getLocalClusterView(simpleDesc(2, instance1, instance2b));
-        assertEquals(2, localView.getInstances().size());
+        assertEquals(1, localView.getInstances().size());
         instance2b.storeSyncToken("2");
         localView = instance1.getLocalClusterView(simpleDesc(2, instance1, instance2b));
         assertEquals(2, localView.getInstances().size());
