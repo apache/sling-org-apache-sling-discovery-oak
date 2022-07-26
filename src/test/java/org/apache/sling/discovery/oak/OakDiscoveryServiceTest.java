@@ -543,7 +543,7 @@ public class OakDiscoveryServiceTest {
         Thread.sleep((joinerDelaySeconds + 2) * 1000);
 
         waitForEquals(listener1, 3, 1000);
-        waitForEquals(listener2, 1, 2000); // had a flaky failure so giving it 2 sec
+        waitForEquals(listener2, 1, 3000); // had a flaky failure so giving it 3 sec
 
         OakVirtualInstanceBuilder builder3 =
                 (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
