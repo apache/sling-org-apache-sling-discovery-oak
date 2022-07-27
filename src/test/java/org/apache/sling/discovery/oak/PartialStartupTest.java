@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,7 @@ import org.apache.jackrabbit.oak.spi.state.NodeStore;
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.ResourceResolverFactory;
+import org.apache.sling.discovery.InstanceDescription;
 import org.apache.sling.discovery.base.commons.OakViewCheckerFactory;
 import org.apache.sling.discovery.base.commons.UndefinedClusterViewException;
 import org.apache.sling.discovery.base.its.setup.mock.MockFactory;
@@ -599,6 +601,116 @@ public class PartialStartupTest {
         instance2b.storeSyncToken("2");
         localView = instance1.getLocalClusterView(simpleDesc(2, instance1, instance2b));
         assertEquals(2, localView.getInstances().size());
+    }
+
+    @Test
+    public void testMultipleSlowJoins() throws Exception {
+        LocalClusterView localView;
+
+        // instance 1 starts up normal, fast
+        MiniInstance instance1 = create(1, true, true, "1");
+        localView = instance1.getLocalClusterView(simpleDesc(1, instance1));
+        assertEquals(1, localView.getInstances().size());
+
+        // instance 2 is slow
+        MiniInstance instance2 = create(2, false, false, null);
+        localView = instance1.getLocalClusterView(simpleDesc(2, instance1, instance2));
+        assertEquals(1, localView.getInstances().size());
+        instance1.storeSyncToken("2");
+        localView = instance1.getLocalClusterView(simpleDesc(2, instance1, instance2));
+        assertEquals(1, localView.getInstances().size());
+
+        // instance 3 is slow
+        MiniInstance instance3 = create(3, false, false, null);
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance2));
+        assertEquals(1, localView.getInstances().size());
+        instance1.storeSyncToken("3");
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance3));
+        assertEquals(1, localView.getInstances().size());
+
+        // instance 3 finishes startup, almost
+        instance3.storeSlingId();
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance3));
+        assertEquals(1, localView.getInstances().size());
+        instance3.initLeaderElectionId();
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance3));
+        assertEquals(1, localView.getInstances().size());
+
+        // instance 2 also finishes startup, almost
+        instance2.storeSlingId();
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance3));
+        assertEquals(1, localView.getInstances().size());
+        instance2.initLeaderElectionId();
+        localView = instance1.getLocalClusterView(simpleDesc(3, instance1, instance2, instance3));
+        assertEquals(1, localView.getInstances().size());
+
+        // instance 4 is slow
+        MiniInstance instance4 = create(4, false, false, null);
+        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, instance2, instance3, instance4));
+        assertEquals(1, localView.getInstances().size());
+        instance1.storeSyncToken("4");
+        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, instance2, instance3, instance4));
+        assertEquals(1, localView.getInstances().size());
+
+        instance3.storeSyncToken("3");
+        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, instance2, instance3, instance4));
+        assertEquals(1, localView.getInstances().size());
+        instance3.storeSyncToken("4");
+        localView = instance1.getLocalClusterView(simpleDesc(4, instance1, instance2, instance3, instance4));
+        assertEquals(2, localView.getInstances().size());
+        assertEqualList(localView.getInstances(), instance1, instance3);
+
+        // instance 5 is slow
+        MiniInstance instance5 = create(5, false, false, null);
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEquals(2, localView.getInstances().size());
+        assertEqualList(localView.getInstances(), instance1, instance3);
+        instance1.storeSyncToken("5");
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEquals(2, localView.getInstances().size());
+        assertEqualList(localView.getInstances(), instance1, instance3);
+
+        instance4.storeSyncToken("5");
+        instance4.initLeaderElectionId();
+        instance4.storeSlingId();
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEqualList(localView.getInstances(), instance1, instance3, instance4);
+        assertEquals(3, localView.getInstances().size());
+        instance2.storeSyncToken("3");
+        instance2.initLeaderElectionId();
+        instance2.storeSlingId();
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEqualList(localView.getInstances(), instance1, instance3, instance4);
+        assertEquals(3, localView.getInstances().size());
+        instance2.storeSyncToken("5");
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEquals(4, localView.getInstances().size());
+        assertEqualList(localView.getInstances(), instance1, instance3, instance4, instance2);
+        instance5.storeSyncToken("5");
+        instance5.initLeaderElectionId();
+        instance5.storeSlingId();
+        localView = instance1.getLocalClusterView(simpleDesc(5, instance1, instance2, instance3, instance4, instance5));
+        assertEquals(5, localView.getInstances().size());
+        assertEqualList(localView.getInstances(), instance1, instance3, instance4, instance2, instance5);
+    }
+
+    private void assertEqualList(List<InstanceDescription> actualInstances,
+            MiniInstance... expectedInstances) {
+        assertEquals(actualInstances.size(), expectedInstances.length);
+        Set<InstanceDescription> s = new HashSet<>(actualInstances);
+        Iterator<InstanceDescription> it = s.iterator();
+        out: while(it.hasNext()) {
+            InstanceDescription n = it.next();
+            StringBuffer sb = new StringBuffer();
+            for (MiniInstance i : expectedInstances) {
+                if (n.getSlingId() == i.slingId) {
+                    it.remove();
+                    break out;
+                }
+                sb.append(i + ", ");
+            }
+            fail("instance not found: slingId=" + n.getSlingId() + " in list " + sb);
+        }
     }
 
     @Test
