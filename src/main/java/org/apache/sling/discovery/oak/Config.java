@@ -22,12 +22,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 import org.apache.sling.discovery.base.connectors.BaseConfig;
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig;
 import org.osgi.framework.BundleContext;
-import org.osgi.service.component.ComponentException;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.metatype.annotations.Designate;
@@ -237,8 +236,8 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
         sharedKey = config.sharedKey();
         keyInterval = config.hmacSharedKeyTTL();
 
-        backoffStandbyFactor = guard((c) -> config.backoffStandbyFactor(), "backoffStandbyFactor", DEFAULT_BACKOFF_STANDBY_FACTOR);
-        backoffStableFactor = guard((c) -> config.backoffStableFactor(), "backoffStableFactor", DEFAULT_BACKOFF_STABLE_FACTOR);
+        backoffStandbyFactor = guard(c -> config.backoffStandbyFactor(), "backoffStandbyFactor", DEFAULT_BACKOFF_STANDBY_FACTOR);
+        backoffStableFactor = guard(c -> config.backoffStableFactor(), "backoffStableFactor", DEFAULT_BACKOFF_STABLE_FACTOR);
 
         this.invertLeaderElectionPrefixOrder = config.invertLeaderElectionPrefixOrder();
         logger.debug("configure: invertLeaderElectionPrefixOrder='{}'", this.invertLeaderElectionPrefixOrder);
@@ -256,11 +255,11 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
         logger.debug("configure: joinerDelaySeconds='{}'", this.joinerDelaySeconds);
     }
 
-    private Integer guard(Function<Void, Integer> injectedConfig, String key, int def) {
+    private Integer guard(ToIntFunction<Void> injectedConfig, String key, int def) {
         try {
-            return injectedConfig.apply(null);
+            return injectedConfig.applyAsInt(null);
         } catch(RuntimeException re) {
-            logger.info("configure: got RuntimeException for " + key + ", using default: " + re);
+            logger.info("configure: got RuntimeException for {} , using default: {}", key, re.getMessage());
             return def;
         }
     }
