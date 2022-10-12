@@ -26,6 +26,7 @@ import org.junit.Test;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class ConfigTest {
@@ -45,5 +46,21 @@ public class ConfigTest {
     @Test
     public void testIfServiceActive() {
         assertNotNull(config);
+    }
+
+    @Test
+    public void testEmptyValues() {
+        Dictionary<String, Object> properties = new Hashtable<>();
+        properties.put("backoffStandbyFactor", "");
+        config = context.registerInjectActivateService(new Config(), properties);
+        assertEquals(5, config.getBackoffStandbyFactor());
+        properties = new Hashtable<>();
+        properties.put("backoffStandbyFactor", "4");
+        config = context.registerInjectActivateService(new Config(), properties);
+        assertEquals(4, config.getBackoffStandbyFactor());
+        properties = new Hashtable<>();
+        properties.put("backoffStableFactor", "");
+        config = context.registerInjectActivateService(new Config(), properties);
+        assertEquals(5, config.getBackoffStandbyFactor());
     }
 }
