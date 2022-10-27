@@ -22,6 +22,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
 
 import org.apache.sling.discovery.base.connectors.BaseConfig;
 import org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig;
@@ -160,28 +162,28 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
     }
 
     protected void configure(final DiscoveryServiceCentralConfig config) {
-        this.connectorPingTimeout = config.connectorPingTimeout();
+        this.connectorPingTimeout = guardLong(c -> config.connectorPingTimeout(), "connectorPingTimeout", DEFAULT_TOPOLOGY_CONNECTOR_TIMEOUT);
         logger.debug("configure: connectorPingTimeout='{}'", this.connectorPingTimeout);
 
-        this.connectorPingInterval = config.connectorPingInterval();
+        this.connectorPingInterval = guardLong(c -> config.connectorPingInterval(), "connectorPingInterval", DEFAULT_TOPOLOGY_CONNECTOR_INTERVAL);
         logger.debug("configure: connectorPingInterval='{}'", this.connectorPingInterval);
 
-        this.discoveryLiteCheckInterval = config.discoveryLiteCheckInterval();
+        this.discoveryLiteCheckInterval = guardLong(c -> config.discoveryLiteCheckInterval(), "discoveryLiteCheckInterval", DEFAULT_DISCOVERY_LITE_CHECK_INTERVAL);
         logger.debug("configure: discoveryLiteCheckInterval='{}'", this.discoveryLiteCheckInterval);
 
-        this.clusterSyncServiceTimeout = config.clusterSyncServiceTimeout();
+        this.clusterSyncServiceTimeout = guardLong(c -> config.clusterSyncServiceTimeout(), "clusterSyncServiceTimeout", DEFAULT_CLUSTER_SYNC_SERVICE_TIMEOUT);
         logger.debug("configure: clusterSyncServiceTimeout='{}'", this.clusterSyncServiceTimeout);
 
-        this.clusterSyncServiceInterval = config.clusterSyncServiceInterval();
+        this.clusterSyncServiceInterval = guardLong(c -> config.clusterSyncServiceInterval(), "clusterSyncServiceInterval", DEFAULT_CLUSTER_SYNC_SERVICE_INTERVAL);
         logger.debug("configure: clusterSyncServiceInterval='{}'", this.clusterSyncServiceInterval);
 
-        this.minEventDelay = config.minEventDelay();
+        this.minEventDelay = guardInt(c -> config.minEventDelay(), "minEventDelay", DEFAULT_MIN_EVENT_DELAY);
         logger.debug("configure: minEventDelay='{}'", this.minEventDelay);
 
-        this.socketConnectTimeout = config.socketConnectTimeout();
+        this.socketConnectTimeout = guardInt(c -> config.socketConnectTimeout(), "socketConnectTimeout", DEFAULT_SOCKET_CONNECT_TIMEOUT);
         logger.debug("configure: socketConnectTimeout='{}'", this.socketConnectTimeout);
 
-        this.soTimeout = config.soTimeout();
+        this.soTimeout = guardInt(c -> config.soTimeout(), "soTimeout", DEFAULT_SO_TIMEOUT);
         logger.debug("configure: soTimeout='{}'", this.soTimeout);
 
         String[] topologyConnectorUrlsStr = config.topologyConnectorUrls();
@@ -235,8 +237,8 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
         sharedKey = config.sharedKey();
         keyInterval = config.hmacSharedKeyTTL();
 
-        backoffStandbyFactor = config.backoffStandbyFactor();
-        backoffStableFactor = config.backoffStableFactor();
+        backoffStandbyFactor = guardInt(c -> config.backoffStandbyFactor(), "backoffStandbyFactor", DEFAULT_BACKOFF_STANDBY_FACTOR);
+        backoffStableFactor = guardInt(c -> config.backoffStableFactor(), "backoffStableFactor", DEFAULT_BACKOFF_STABLE_FACTOR);
 
         this.invertLeaderElectionPrefixOrder = config.invertLeaderElectionPrefixOrder();
         logger.debug("configure: invertLeaderElectionPrefixOrder='{}'", this.invertLeaderElectionPrefixOrder);
@@ -247,11 +249,29 @@ public class Config implements BaseConfig, DiscoveryLiteConfig {
         this.suppressPartiallyStartedInstance = config.suppressPartiallyStartedInstance();
         logger.debug("configure: suppressPartiallyStartedInstance='{}'", this.suppressPartiallyStartedInstance);
 
-        this.suppressionTimeoutSeconds = config.suppressionTimeoutSeconds();
+        this.suppressionTimeoutSeconds = guardLong(c -> config.suppressionTimeoutSeconds(), "suppressionTimeoutSeconds", DEFAULT_SUPPRESSION_TIMEOUT_SECONDS);
         logger.debug("configure: suppressionTimeoutSeconds='{}'", this.suppressionTimeoutSeconds);
 
-        this.joinerDelaySeconds = config.joinerDelaySeconds();
+        this.joinerDelaySeconds = guardLong(c -> config.joinerDelaySeconds(), "joinerDelaySeconds", DEFAULT_JOINER_DELAY_SECONDS);
         logger.debug("configure: joinerDelaySeconds='{}'", this.joinerDelaySeconds);
+    }
+
+    private Integer guardInt(ToIntFunction<Void> injectedConfig, String key, int def) {
+        try {
+            return injectedConfig.applyAsInt(null);
+        } catch(RuntimeException re) {
+            logger.info("configure: got RuntimeException for {} , using default: {}", key, re.getMessage());
+            return def;
+        }
+    }
+
+    private Long guardLong(ToLongFunction<Void> injectedConfig, String key, long def) {
+        try {
+            return injectedConfig.applyAsLong(null);
+        } catch(RuntimeException re) {
+            logger.info("configure: got RuntimeException for {} , using default: {}", key, re.getMessage());
+            return def;
+        }
     }
 
     /**
