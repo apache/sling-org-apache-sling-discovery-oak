@@ -38,7 +38,6 @@ import org.apache.sling.discovery.TopologyEvent;
 import org.apache.sling.discovery.TopologyEvent.Type;
 import org.apache.sling.discovery.TopologyEventListener;
 import org.apache.sling.discovery.TopologyView;
-import org.apache.sling.discovery.commons.providers.util.ResourceHelper;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -356,12 +355,26 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         try {
             resolver = localFactory.getServiceResourceResolver(null);
 
-            final Resource clusterInstances = ResourceHelper.getOrCreateResource(resolver,
-                    localConfig.getClusterInstancesPath());
-            final Resource idMap = ResourceHelper.getOrCreateResource(resolver,
-                    localConfig.getIdMapPath());
-            final Resource syncTokens = ResourceHelper.getOrCreateResource(resolver,
-                    localConfig.getSyncTokenPath());
+            final Resource clusterInstances = resolver
+                    .getResource(localConfig.getClusterInstancesPath());
+            if (clusterInstances == null) {
+                logger.warn("cleanup: no resource found at {}, stopping.",
+                        localConfig.getClusterInstancesPath());
+                return false;
+            }
+            final Resource idMap = resolver.getResource(localConfig.getIdMapPath());
+            if (idMap == null) {
+                logger.warn("cleanup: no resource found at {}, stopping.",
+                        localConfig.getIdMapPath());
+                return false;
+            }
+            final Resource syncTokens = resolver
+                    .getResource(localConfig.getSyncTokenPath());
+            if (syncTokens == null) {
+                logger.warn("cleanup: no resource found at {}, stopping.",
+                        localConfig.getSyncTokenPath());
+                return false;
+            }
             resolver.revert();
             resolver.refresh();
 
