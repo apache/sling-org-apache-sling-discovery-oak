@@ -153,8 +153,11 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     private long minCreationAgeMillis = DEFAULT_MIN_CREATION_AGE_MILLIS;
 
+    /** test counter that increments upon every scheduler invocation */
+    private AtomicInteger runCount = new AtomicInteger(0);
+
     /** test counter that increments upon every batch deletion */
-    private AtomicInteger runcount = new AtomicInteger(0);
+    private AtomicInteger completionCount = new AtomicInteger(0);
 
     /** test counter that keeps track of actually deleted slingIds */
     private AtomicInteger deleteCount = new AtomicInteger(0);
@@ -303,6 +306,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      */
     @Override
     public void run() {
+        runCount.incrementAndGet();
         if (!hasTopology) {
             return;
         }
@@ -319,8 +323,9 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         // log successful cleanup done, yes, on info
-        logger.info("run: slingId cleanup done, delete counter = {}, run counter = {}",
-                getDeleteCount(), getRunCount());
+        logger.info(
+                "run: slingId cleanup done, run counter = {}, delete counter = {}, completion counter = {}",
+                getRunCount(), getDeleteCount(), getCompletionCount());
     }
 
     /**
@@ -432,7 +437,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                 deleteCount.addAndGet(removed);
             }
             firstRun = false;
-            runcount.incrementAndGet();
+            completionCount.incrementAndGet();
             return mightHaveMore;
         } catch (LoginException e) {
             logger.error("cleanup: could not log in administratively: " + e, e);
@@ -483,11 +488,15 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         return true;
     }
 
+    int getRunCount() {
+        return runCount.get();
+    }
+
     int getDeleteCount() {
         return deleteCount.get();
     }
 
-    int getRunCount() {
-        return runcount.get();
+    int getCompletionCount() {
+        return completionCount.get();
     }
 }

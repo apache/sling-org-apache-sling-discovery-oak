@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -39,6 +40,7 @@ import java.util.UUID;
 
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
+import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -231,6 +233,7 @@ public class TestSlingIdCleanupTask {
     @Test
     public void testActivatde() throws Exception {
         createCleanupTask(0, 86400000);
+        cleanupTask.activate(null, null);
         cleanupTask.activate(null, new DummyConf(2, 3, 4, 5));
         assertConfigs(2, 3, 4, 5);
         cleanupTask.deactivate();
@@ -239,10 +242,47 @@ public class TestSlingIdCleanupTask {
     @Test
     public void testModified() throws Exception {
         createCleanupTask(0, 86400000);
+        cleanupTask.modified(null, null);
         cleanupTask.modified(null, new DummyConf(3, 4, 5, 6));
         assertConfigs(3, 4, 5, 6);
         cleanupTask.modified(null, new DummyConf(4, 5, 6, 7));
         assertConfigs(4, 5, 6, 7);
+    }
+
+    @Test
+    public void testMillisOf() throws Exception {
+        assertEquals(-1, SlingIdCleanupTask.millisOf(null));
+        assertEquals(2, SlingIdCleanupTask.millisOf(new Date(2)));
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date(3));
+        assertEquals(3, SlingIdCleanupTask.millisOf(cal));
+    }
+
+    @Test
+    public void testNoClusterInstancesResource() throws Exception {
+        createCleanupTask(0, 1, 100, 86400000);
+        cleanupTask.handleTopologyEvent(newInitEvent(newView()));
+        Thread.sleep(1000);
+        assertEquals(1, cleanupTask.getRunCount());
+    }
+
+    @Test
+    public void testNoIdMapResource() throws Exception {
+        createCleanupTask(0, 1, 100, 86400000);
+        createPath(config.getClusterInstancesPath());
+        cleanupTask.handleTopologyEvent(newInitEvent(newView()));
+        Thread.sleep(1000);
+        assertEquals(1, cleanupTask.getRunCount());
+    }
+
+    @Test
+    public void testNoSyncTokenResource() throws Exception {
+        createCleanupTask(0, 1, 100, 86400000);
+        createPath(config.getClusterInstancesPath());
+        createPath(config.getIdMapPath());
+        cleanupTask.handleTopologyEvent(newInitEvent(newView()));
+        Thread.sleep(1000);
+        assertEquals(1, cleanupTask.getRunCount());
     }
 
     private void assertConfigs(int expectedInitialDelay, int expectedInterval,
@@ -278,14 +318,14 @@ public class TestSlingIdCleanupTask {
         final long start = System.currentTimeMillis();
         long diff;
         do {
-            if (task.getRunCount() == expectedRunCount) {
+            if (task.getCompletionCount() == expectedRunCount) {
                 return;
             }
             Thread.sleep(50);
             diff = (start + timeoutMillis) - System.currentTimeMillis();
         } while (diff > 0);
         assertEquals("did not reach expected runcount within " + timeoutMillis + "ms",
-                expectedRunCount, task.getRunCount());
+                expectedRunCount, task.getCompletionCount());
     }
 
     @Test
@@ -407,9 +447,9 @@ public class TestSlingIdCleanupTask {
         cleanupTask
                 .handleTopologyEvent(newChangedEvent(remoteLeaderView, localLeaderView));
         assertEquals(0, cleanupTask.getDeleteCount());
-        assertEquals(0, cleanupTask.getRunCount());
+        assertEquals(0, cleanupTask.getCompletionCount());
         waitForRunCount(cleanupTask, 1, 5000);
-        assertEquals(1, cleanupTask.getRunCount());
+        assertEquals(1, cleanupTask.getCompletionCount());
         assertEquals(5, cleanupTask.getDeleteCount());
     }
 
@@ -486,7 +526,7 @@ public class TestSlingIdCleanupTask {
 
         cleanupTask.handleTopologyEvent(newInitEvent(view));
         assertEquals(0, cleanupTask.getDeleteCount());
-        assertEquals(0, cleanupTask.getRunCount());
+        assertEquals(0, cleanupTask.getCompletionCount());
         waitForRunCount(cleanupTask, 1, 5000);
         assertEquals(Math.max(0, oldIds - Math.max(0, activeIds - recentIds)),
                 cleanupTask.getDeleteCount());
@@ -603,6 +643,18 @@ public class TestSlingIdCleanupTask {
                 slingId);
         resourceResolver.commit();
         return true;
+    }
+
+    private void createPath(String path) throws Exception {
+        ResourceResolver resourceResolver = getResourceResolver();
+        if (resourceResolver == null) {
+            fail("could not login");
+            return;
+        }
+
+        final Resource resource = ResourceHelper.getOrCreateResource(resourceResolver,
+                path);
+        resourceResolver.commit();
     }
 
     private boolean createClusterInstance(String uuid, String runtimeId,
