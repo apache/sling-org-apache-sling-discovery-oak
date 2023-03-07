@@ -276,7 +276,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         final Scheduler localScheduler = scheduler;
         if (localScheduler == null) {
             // should not happen
-            logger.warn("resetSchedule: no scheduler set, giving up.");
+            logger.warn("recreateSchedule: no scheduler set, giving up.");
             return;
         }
         final Calendar cal = Calendar.getInstance();
@@ -288,7 +288,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
         cal.add(Calendar.MILLISECOND, delayMillis);
         final Date inFiveMinutes = cal.getTime();
-        logger.debug("resetSchedule: scheduling a cleanup in {} milliseconds from now.",
+        logger.debug("recreateSchedule: scheduling a cleanup in {} milliseconds from now.",
                 delayMillis);
         ScheduleOptions options = localScheduler.AT(inFiveMinutes);
         options.name(SCHEDULE_NAME);
@@ -319,7 +319,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         // log successful cleanup done, yes, on info
-        logger.info("run: slingId cleanup done.");
+        logger.info("run: slingId cleanup done, delete counter = {}", deleteCount.get());
     }
 
     /**
@@ -340,7 +340,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
         final TopologyView localCurrentView = currentView;
         if (localCurrentView == null || !localCurrentView.isCurrent()) {
-            logger.info("cleanup : cannot cleanup as topology recently changed : {}",
+            logger.debug("cleanup : cannot cleanup as topology recently changed : {}",
                     localCurrentView);
             return true;
         }
@@ -376,23 +376,23 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                         || !localCurrentView.isCurrent()) {
                     // we got interrupted during cleanup
                     // let's not commit at all then
-                    logger.info(
+                    logger.debug(
                             "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
                     return true;
                 }
                 final String slingId = resource.getName();
-                logger.info("cleanup : handling slingId = {}", slingId);
+                logger.debug("cleanup : handling slingId = {}", slingId);
                 Object clusterNodeId = idMapMap.get(slingId);
                 if (clusterNodeId == null) {
-                    logger.info("cleanup : slingId not recently in use : {}",
+                    logger.debug("cleanup : slingId not recently in use : {}",
                             clusterNodeId);
                 } else {
-                    logger.info("cleanup : slingId WAS recently in use : {}",
+                    logger.debug("cleanup : slingId WAS recently in use : {}",
                             clusterNodeId);
                     continue;
                 }
                 if (activeSlingIds.contains(slingId)) {
-                    logger.info("cleanup : slingId is currently active : {}", slingId);
+                    logger.debug("cleanup : slingId is currently active : {}", slingId);
                     continue;
                 }
                 if (deleteIfOldSlingId(resource, syncTokenMap, now,
@@ -407,7 +407,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             if (!hasTopology) {
                 // we got interrupted during cleanup
                 // let's not commit at all then
-                logger.info(
+                logger.debug(
                         "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
                 return true;
             }
