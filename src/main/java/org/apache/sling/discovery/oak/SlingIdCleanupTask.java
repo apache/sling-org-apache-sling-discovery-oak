@@ -291,7 +291,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         logger.debug(
                 "recreateSchedule: scheduling a cleanup in {} milliseconds from now.",
                 delayMillis);
-        ScheduleOptions options = localScheduler.AT(inFiveMinutes);
+        ScheduleOptions options = localScheduler.AT(scheduledDate);
         options.name(SCHEDULE_NAME);
         options.canRunConcurrently(false); // should not concurrently execute
         localScheduler.schedule(this, options);
