@@ -233,6 +233,7 @@ public class TestSlingIdCleanupTask {
         createCleanupTask(0, 86400000);
         cleanupTask.activate(null, new DummyConf(2, 3, 4, 5));
         assertConfigs(2, 3, 4, 5);
+        cleanupTask.deactivate();
     }
 
     @Test
@@ -336,6 +337,17 @@ public class TestSlingIdCleanupTask {
         assertEquals(0, cleanupTask.getDeleteCount());
         Thread.sleep(500);
         assertEquals(0, cleanupTask.getDeleteCount());
+    }
+
+    @Test
+    public void testNoScheduler() throws Exception {
+        createCleanupTask(1000, 86400000);
+        PrivateAccessor.setField(cleanupTask, "scheduler", null);
+        cleanupTask.activate(null, new DummyConf(2, 3, 4, 5));
+        cleanupTask.handleTopologyEvent(newChangingEvent(newView()));
+        // no asserts, just tests execution without exception
+        cleanupTask.handleTopologyEvent(newChangedEvent(newView(), newView()));
+        // no asserts, just tests execution without exception
     }
 
     @Test
