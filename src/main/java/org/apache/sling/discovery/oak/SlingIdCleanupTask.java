@@ -351,9 +351,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             activeSlingIds.add(id.getSlingId());
         }
 
-        ResourceResolver resolver = null;
-        try {
-            resolver = localFactory.getServiceResourceResolver(null);
+        try (ResourceResolver resolver = localFactory.getServiceResourceResolver(null)) {
 
             final Resource clusterInstances = resolver
                     .getResource(localConfig.getClusterInstancesPath());
@@ -444,9 +442,6 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             throw new RuntimeException(
                     "Exception while talking to repository (" + e + ")", e);
         } finally {
-            if (resolver != null) {
-                resolver.close();
-            }
             logger.debug("cleanup: done.");
         }
     }
