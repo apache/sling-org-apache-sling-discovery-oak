@@ -328,7 +328,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      * 
      * @return true if there might be more garbage or false if we're at the end
      */
-    boolean cleanup() {
+    private boolean cleanup() {
         logger.debug("cleanup: start");
 
         final ResourceResolverFactory localFactory = resourceResolverFactory;
@@ -452,7 +452,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         return -1;
     }
 
-    boolean deleteIfOldSlingId(Resource resource, ModifiableValueMap syncTokenMap,
+    private boolean deleteIfOldSlingId(Resource resource, ModifiableValueMap syncTokenMap,
             Calendar now, long localMinCreationAgeMillis) throws PersistenceException {
         Object o = resource.getValueMap().get("leaderElectionIdCreatedAt");
         final long leaderElectionIdCreatedAt = millisOf(o);
