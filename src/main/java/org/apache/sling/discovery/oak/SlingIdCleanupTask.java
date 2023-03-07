@@ -287,7 +287,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             delayMillis = intervalMillis;
         }
         cal.add(Calendar.MILLISECOND, delayMillis);
-        final Date inFiveMinutes = cal.getTime();
+        final Date scheduledDate = cal.getTime();
         logger.debug(
                 "recreateSchedule: scheduling a cleanup in {} milliseconds from now.",
                 delayMillis);
