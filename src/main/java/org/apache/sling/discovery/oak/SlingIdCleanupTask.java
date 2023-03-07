@@ -375,7 +375,6 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                         localConfig.getSyncTokenPath());
                 return false;
             }
-            resolver.revert();
             resolver.refresh();
 
             final ValueMap idMapMap = idMap.adaptTo(ValueMap.class);
