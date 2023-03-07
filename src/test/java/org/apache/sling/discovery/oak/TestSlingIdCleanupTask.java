@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,6 +75,48 @@ public class TestSlingIdCleanupTask {
     protected static final String PROPERTY_ID_SLING_HOME_PATH = "slingHomePath";
 
     protected static final String PROPERTY_ID_RUNTIME = "runtimeId";
+
+    @SuppressWarnings("all")
+    class DummyConf implements SlingIdCleanupTask.Conf {
+
+        int initialDelay;
+        int interval;
+        int batchSize;
+        long age;
+
+        DummyConf(int initialDelay, int interval, int batchSize, long age) {
+            this.initialDelay = initialDelay;
+            this.interval = interval;
+            this.batchSize = batchSize;
+            this.age = age;
+        }
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+            return null;
+        }
+
+        @Override
+        public int org_apache_sling_discovery_oak_slingid_cleanup_initial_delay() {
+            return initialDelay;
+        }
+
+        @Override
+        public int org_apache_sling_discovery_oak_slingid_cleanup_interval() {
+            return interval;
+        }
+
+        @Override
+        public int org_apache_sling_discovery_oak_slingid_cleanup_batchsize() {
+            return batchSize;
+        }
+
+        @Override
+        public long org_apache_sling_discovery_oak_slingid_cleanup_min_creation_age() {
+            return age;
+        }
+
+    }
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -183,6 +226,37 @@ public class TestSlingIdCleanupTask {
 
     private TopologyEvent newChangedEvent(TopologyView oldView, TopologyView newView) {
         return new TopologyEvent(TopologyEvent.Type.TOPOLOGY_CHANGED, oldView, newView);
+    }
+
+    @Test
+    public void testActivatde() throws Exception {
+        createCleanupTask(0, 86400000);
+        cleanupTask.activate(null, new DummyConf(2, 3, 4, 5));
+        assertConfigs(2, 3, 4, 5);
+    }
+
+    @Test
+    public void testModified() throws Exception {
+        createCleanupTask(0, 86400000);
+        cleanupTask.modified(null, new DummyConf(3, 4, 5, 6));
+        assertConfigs(3, 4, 5, 6);
+        cleanupTask.modified(null, new DummyConf(4, 5, 6, 7));
+        assertConfigs(4, 5, 6, 7);
+    }
+
+    private void assertConfigs(int expectedInitialDelay, int expectedInterval,
+            int expectedBatchSize, int expectedAge) throws NoSuchFieldException {
+        int initialDelayMillis = (Integer) PrivateAccessor.getField(cleanupTask,
+                "initialDelayMillis");
+        assertEquals(expectedInitialDelay, initialDelayMillis);
+        int intervalMillis = (Integer) PrivateAccessor.getField(cleanupTask,
+                "intervalMillis");
+        assertEquals(expectedInterval, intervalMillis);
+        int batchSize = (Integer) PrivateAccessor.getField(cleanupTask, "batchSize");
+        assertEquals(expectedBatchSize, batchSize);
+        long minCreationAgeMillis = (Long) PrivateAccessor.getField(cleanupTask,
+                "minCreationAgeMillis");
+        assertEquals(expectedAge, minCreationAgeMillis);
     }
 
     @Test

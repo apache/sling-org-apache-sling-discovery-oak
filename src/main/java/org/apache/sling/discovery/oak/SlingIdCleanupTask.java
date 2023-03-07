@@ -94,8 +94,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     /**
      * initial delay is 10min : after a TOPOLOGY_INIT or TOPOLOGY_CHANGED on the
-     * leader, there should be a 10min delay before starting a round of cleanup. This
-     * is to not add unnecessary load after a startup/change.
+     * leader, there should be a 10min delay before starting a round of cleanup.
+     * This is to not add unnecessary load after a startup/change.
      */
     private static final int DEFAULT_CLEANUP_INITIAL_DELAY = 600000; // 10min
 
@@ -111,8 +111,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      * more than 50, that is probably a one-time cleanup after this feature is first
      * rolled out. That one-time cleanup can actually take a considerable amount of
      * time. So, to not overload the write load on the repository, the deletion is
-     * batched into 50 at any time - with 10min delays in between. That results in an
-     * average of 1 cleanup every 12 seconds, or 5 per minute, or 8640 per day,
+     * batched into 50 at any time - with 10min delays in between. That results in
+     * an average of 1 cleanup every 12 seconds, or 5 per minute, or 8640 per day,
      * for a legacy cleanup.
      */
     private static final int DEFAULT_CLEANUP_BATCH_SIZE = 50;
@@ -143,6 +143,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      * volatile field to keep track of the current topology, shared between topology
      * listener and deletion
      */
+    @SuppressWarnings("all")
     private volatile TopologyView currentView;
 
     private int initialDelayMillis = DEFAULT_CLEANUP_INITIAL_DELAY;
@@ -306,9 +307,9 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         boolean mightHaveMore = true;
-        try{
+        try {
             mightHaveMore = cleanup();
-        } catch(Exception e) {
+        } catch (Exception e) {
             // upon exception just log and retry in 10min
             logger.error("run: got Exception while cleaning up slnigIds : " + e, e);
         }
