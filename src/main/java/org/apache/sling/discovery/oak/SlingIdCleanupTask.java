@@ -288,7 +288,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
         cal.add(Calendar.MILLISECOND, delayMillis);
         final Date inFiveMinutes = cal.getTime();
-        logger.debug("recreateSchedule: scheduling a cleanup in {} milliseconds from now.",
+        logger.debug(
+                "recreateSchedule: scheduling a cleanup in {} milliseconds from now.",
                 delayMillis);
         ScheduleOptions options = localScheduler.AT(inFiveMinutes);
         options.name(SCHEDULE_NAME);
@@ -319,7 +320,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         // log successful cleanup done, yes, on info
-        logger.info("run: slingId cleanup done, delete counter = {}", deleteCount.get());
+        logger.info("run: slingId cleanup done, delete counter = {}, run counter = {}",
+                getDeleteCount(), getRunCount());
     }
 
     /**
