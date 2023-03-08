@@ -22,6 +22,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.sling.api.resource.LoginException;
@@ -398,22 +399,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     return true;
                 }
                 final String slingId = resource.getName();
-                logger.debug("cleanup : handling slingId = {}", slingId);
-                Object clusterNodeId = idMapMap.get(slingId);
-                if (clusterNodeId == null) {
-                    logger.debug("cleanup : slingId not recently in use : {}",
-                            clusterNodeId);
-                } else {
-                    logger.debug("cleanup : slingId WAS recently in use : {}",
-                            clusterNodeId);
-                    continue;
-                }
-                if (activeSlingIds.contains(slingId)) {
-                    logger.debug("cleanup : slingId is currently active : {}", slingId);
-                    continue;
-                }
-                if (deleteIfOldSlingId(resource, syncTokenMap, now,
-                        localMinCreationAgeMillis)) {
+                if (deleteIfOldSlingId(resource, slingId, syncTokenMap, idMapMap,
+                        activeSlingIds, now, localMinCreationAgeMillis)) {
                     if (++removed >= localBatchSize) {
                         // we need to stop
                         mightHaveMore = true;
@@ -421,7 +408,37 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     }
                 }
             }
-            if (!hasTopology) {
+            // if we're not already at the batch limit, check syncTokens too
+            if (!mightHaveMore) {
+                for (String slingId : syncTokenMap.keySet()) {
+                    try {
+                        UUID.fromString(slingId);
+                    } catch (Exception e) {
+                        // not a uuid
+                        continue;
+                    }
+                    logger.info("syncToken : " + slingId);
+                    if (!hasTopology || currentView != localCurrentView
+                            || !localCurrentView.isCurrent()) {
+                        // we got interrupted during cleanup
+                        // let's not commit at all then
+                        logger.debug(
+                                "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
+                        return true;
+                    }
+                    Resource resourceOrNull = clusterInstances.getChild(slingId);
+                    if (deleteIfOldSlingId(resourceOrNull, slingId, syncTokenMap,
+                            idMapMap, activeSlingIds, now, localMinCreationAgeMillis)) {
+                        if (++removed >= localBatchSize) {
+                            // we need to stop
+                            mightHaveMore = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!hasTopology || currentView != localCurrentView
+                    || !localCurrentView.isCurrent()) {
                 // we got interrupted during cleanup
                 // let's not commit at all then
                 logger.debug(
@@ -466,25 +483,48 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         return -1;
     }
 
-    private boolean deleteIfOldSlingId(Resource resource, ModifiableValueMap syncTokenMap,
-            Calendar now, long localMinCreationAgeMillis) throws PersistenceException {
-        Object o = resource.getValueMap().get("leaderElectionIdCreatedAt");
-        final long leaderElectionIdCreatedAt = millisOf(o);
-        if (leaderElectionIdCreatedAt <= 0) {
-            // skip
-            logger.trace(
-                    "deleteIfOldSlingId: resource ({}) has no or wrongly typed leaderElectionIdCreatedAt : {}",
-                    resource, o);
+    private boolean deleteIfOldSlingId(Resource resourceOrNull, String slingId,
+            ModifiableValueMap syncTokenMap, ValueMap idMapMap,
+            Set<String> activeSlingIds, Calendar now, long localMinCreationAgeMillis)
+            throws PersistenceException {
+        logger.trace("deleteIfOldSlingId : handling slingId = {}", slingId);
+        if (activeSlingIds.contains(slingId)) {
+            logger.trace("deleteIfOldSlingId : slingId is currently active : {}",
+                    slingId);
             return false;
         }
-        final long diffMillis = now.getTimeInMillis() - leaderElectionIdCreatedAt;
-        if (diffMillis <= localMinCreationAgeMillis) {
-            logger.trace("deleteIfOldSlingId: not old slingId : {}", resource);
-            return false;
+        // only check in idmap and for leaderElectionId details if the clusterInstance
+        // resource is there
+        if (resourceOrNull != null) {
+            Object clusterNodeId = idMapMap.get(slingId);
+            if (clusterNodeId == null) {
+                logger.trace("deleteIfOldSlingId : slingId {} not recently in use : {}",
+                        slingId, clusterNodeId);
+            } else {
+                logger.trace("deleteIfOldSlingId : slingId {} WAS recently in use : {}",
+                        slingId, clusterNodeId);
+                return false;
+            }
+            Object o = resourceOrNull.getValueMap().get("leaderElectionIdCreatedAt");
+            final long leaderElectionIdCreatedAt = millisOf(o);
+            if (leaderElectionIdCreatedAt <= 0) {
+                // skip
+                logger.trace(
+                        "deleteIfOldSlingId: resource ({}) has no or wrongly typed leaderElectionIdCreatedAt : {}",
+                        resourceOrNull, o);
+                return false;
+            }
+            final long diffMillis = now.getTimeInMillis() - leaderElectionIdCreatedAt;
+            if (diffMillis <= localMinCreationAgeMillis) {
+                logger.trace("deleteIfOldSlingId: not old slingId : {}", resourceOrNull);
+                return false;
+            }
         }
-        logger.trace("deleteIfOldSlingId: deleting old slingId : {}", resource);
-        syncTokenMap.remove(resource.getName());
-        resource.getResourceResolver().delete(resource);
+        logger.trace("deleteIfOldSlingId: deleting old slingId : {}", resourceOrNull);
+        syncTokenMap.remove(slingId);
+        if (resourceOrNull != null) {
+            resourceOrNull.getResourceResolver().delete(resourceOrNull);
+        }
         return true;
     }
 

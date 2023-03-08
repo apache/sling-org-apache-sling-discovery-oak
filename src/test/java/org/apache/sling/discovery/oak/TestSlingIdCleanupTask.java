@@ -409,6 +409,38 @@ public class TestSlingIdCleanupTask {
         assertEquals(10, cleanupTask.getDeleteCount());
     }
 
+    /**
+     * This tests the case where there are slingIds under /clusterInstances with no
+     * corresponding syncToken
+     */
+    @Test
+    public void testOrphanedClsuterInstances() throws Exception {
+        createCleanupTask(1000, 86400000);
+        createSlingIds(5, 10, 0, 3);
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        waitForRunCount(cleanupTask, 1, 5000);
+        assertEquals(10, cleanupTask.getDeleteCount());
+    }
+
+    /**
+     * This test the case where there are syncTokens without a corresponding slingId
+     * under /clusterInstances
+     */
+    @Test
+    public void testOrphanedSyncTokens() throws Exception {
+        createCleanupTask(1000, 86400000);
+        createSlingIds(5, 10, 0, 20);
+
+        instance.dumpRepo();
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        waitForRunCount(cleanupTask, 1, 5000);
+        assertEquals(15, cleanupTask.getDeleteCount());
+    }
+
     @Test
     public void testLeaderVsNonLeader() throws Exception {
         createCleanupTask(250, 86400000);
@@ -702,6 +734,11 @@ public class TestSlingIdCleanupTask {
 
     private List<String> createSlingIds(int currentIds, int oldIds, int activeOldIds)
             throws Exception {
+        return createSlingIds(currentIds, oldIds, activeOldIds, currentIds + oldIds);
+    }
+
+    private List<String> createSlingIds(int currentIds, int oldIds, int activeOldIds,
+            int numSyncTokens) throws Exception {
         final List<String> orderedIds = new LinkedList<>();
         final Map<String, Long> slingIdToClusterNodeIds = new HashMap<>();
         final Map<String, Long> slingIdToSeqNums = new HashMap<>();
@@ -728,8 +765,30 @@ public class TestSlingIdCleanupTask {
         }
         // idmap is created for all currentIds and active old ids
         fillIdMap(slingIdToClusterNodeIds);
-        for (Entry<String, Long> e : slingIdToSeqNums.entrySet()) {
-            createSyncToken(e.getKey(), e.getValue());
+        while (numSyncTokens > slingIdToSeqNums.size()) {
+            slingIdToSeqNums.put(UUID.randomUUID().toString(), Long.valueOf(1));
+        }
+        int c = 0;
+        // first make sure as many active slingIds have a syncToken as possible
+        for (String activeSlingId : slingIdToClusterNodeIds.keySet()) {
+            createSyncToken(activeSlingId, slingIdToSeqNums.get(activeSlingId));
+            if (++c >= numSyncTokens) {
+                break;
+            }
+        }
+        if (c < numSyncTokens) {
+            // only after they have been served, consider the rest, again up to
+            // numSynTtokens
+            for (Entry<String, Long> e : slingIdToSeqNums.entrySet()) {
+                if (slingIdToClusterNodeIds.containsKey(e.getKey())) {
+                    // then it was probably already added above
+                    continue;
+                }
+                createSyncToken(e.getKey(), e.getValue());
+                if (++c >= numSyncTokens) {
+                    break;
+                }
+            }
         }
         return orderedIds;
     }
