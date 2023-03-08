@@ -413,6 +413,26 @@ public class TestSlingIdCleanupTask {
     }
 
     @Test
+    public void testRepetitionDelay() throws Exception {
+        createCleanupTask(1000, 86400000);
+        createSlingIds(5, 10, 0);
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        waitForRunCount(cleanupTask, 1, 5000);
+        assertEquals(10, cleanupTask.getDeleteCount());
+        cleanupTask.handleTopologyEvent(newChangingEvent(view1));
+        Thread.sleep(1500);
+        assertEquals(1, cleanupTask.getRunCount());
+
+        TopologyView view2 = newView();
+        cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        Thread.sleep(1500);
+        assertEquals(1, cleanupTask.getRunCount());
+        assertEquals(10, cleanupTask.getDeleteCount());
+    }
+
+    @Test
     public void testDisabled() throws Exception {
         createCleanupTask(1000, 86400000);
         System.setProperty(

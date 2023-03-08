@@ -90,6 +90,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     final static String SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.slingidcleanup.enabled";
 
+    private final static long MIN_CLEANUP_DELAY_MILLIS = 46800000; // 13 hours, to intraday load balance
+
     /**
      * default age is 1 week : an instance that is not in the current topology,
      * started 1 week ago is very unlikely to still be active
@@ -172,6 +174,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      * scheduler delays
      */
     private volatile boolean firstRun = true;
+
+    private long lastSuccessfulRun = -1;
 
     @ObjectClassDefinition(name = "Apache Sling Discovery Oak SlingId Cleanup Task", description = "This backup task is in charge of cleaning up old SlingIds from the repository.")
     public @interface Conf {
@@ -330,6 +334,15 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      */
     @Override
     public void run() {
+        if (lastSuccessfulRun > 0 && System.currentTimeMillis()
+                - lastSuccessfulRun < MIN_CLEANUP_DELAY_MILLIS) {
+            logger.debug(
+                    "run: last cleanup was {} millis ago, which is less than {} millis, therefore not cleaning up yet.",
+                    System.currentTimeMillis() - lastSuccessfulRun,
+                    MIN_CLEANUP_DELAY_MILLIS);
+            recreateSchedule();
+            return;
+        }
         runCount.incrementAndGet();
         if (!hasTopology) {
             return;
@@ -350,6 +363,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         logger.info(
                 "run: slingId cleanup done, run counter = {}, delete counter = {}, completion counter = {}",
                 getRunCount(), getDeleteCount(), getCompletionCount());
+        lastSuccessfulRun = System.currentTimeMillis();
     }
 
     /**
