@@ -177,7 +177,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     private long lastSuccessfulRun = -1;
 
-    @ObjectClassDefinition(name = "Apache Sling Discovery Oak SlingId Cleanup Task", description = "This backup task is in charge of cleaning up old SlingIds from the repository.")
+    @ObjectClassDefinition(name = "Apache Sling Discovery Oak SlingId Cleanup Task", description = "This task is in charge of cleaning up old SlingIds from the repository.")
     public @interface Conf {
 
         @AttributeDefinition(name = "Cleanup initial delay milliseconds", description = "Number of milliseconds to initially wait for the first cleanup")
