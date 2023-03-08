@@ -377,7 +377,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         if (!isEnabled()) {
             // bit of overkill probably, as this shouldn't happen.
             // but adds to a good night's sleep.
-            logger.info("cleanup: not enabled, stopping.");
+            logger.debug("cleanup: not enabled, stopping.");
             return false;
         }
 
