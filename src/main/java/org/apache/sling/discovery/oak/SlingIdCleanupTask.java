@@ -18,6 +18,8 @@
  */
 package org.apache.sling.discovery.oak;
 
+import static org.osgi.util.converter.Converters.standardConverter;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
@@ -85,6 +87,8 @@ import org.slf4j.LoggerFactory;
 @Component
 @Designate(ocd = SlingIdCleanupTask.Conf.class)
 public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
+
+    final static String SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.slingidcleanup.enabled";
 
     /**
      * default age is 1 week : an instance that is not in the current topology,
@@ -228,12 +232,21 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         this.batchSize = batchSize;
         this.minCreationAgeMillis = minCreationAgeMillis;
         logger.info(
-                "config: initial delay milliseconds = {}, interval milliseconds = {}, batch size = {}, min creation age milliseconds = {}",
-                initialDelayMillis, intervalMillis, batchSize, minCreationAgeMillis);
+                "config: enabled = {}, initial delay milliseconds = {}, interval milliseconds = {}, batch size = {}, min creation age milliseconds = {}",
+                isEnabled(), initialDelayMillis, intervalMillis, batchSize,
+                minCreationAgeMillis);
     }
 
     @Override
     public void handleTopologyEvent(TopologyEvent event) {
+        if (!isEnabled()) {
+            hasTopology = false; // stops potentially ongoing deletion
+            currentView = null;
+            // cancel cleanup schedule
+            stop();
+            logger.info("handleTopologyEvent: slingId cleanup is disabled");
+            return;
+        }
         final TopologyView newView = event.getNewView();
         if (newView == null || event.getType() == Type.PROPERTIES_CHANGED) {
             hasTopology = false; // stops potentially ongoing deletion
@@ -265,6 +278,16 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
         final boolean unscheduled = localScheduler.unschedule(SCHEDULE_NAME);
         logger.debug("stop: unschedule result={}", unscheduled);
+    }
+
+    /**
+     * Reads the system property that enables or disabled this tasks
+     */
+    private static boolean isEnabled() {
+        final String systemPropertyValue = System
+                .getProperty(SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME);
+        return standardConverter().convert(systemPropertyValue).defaultValue(false)
+                .to(Boolean.class);
     }
 
     /**
@@ -337,6 +360,12 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      */
     private boolean cleanup() {
         logger.debug("cleanup: start");
+        if (!isEnabled()) {
+            // bit of overkill probably, as this shouldn't happen.
+            // but adds to a good night's sleep.
+            logger.info("cleanup: not enabled, stopping.");
+            return false;
+        }
 
         final ResourceResolverFactory localFactory = resourceResolverFactory;
         final Config localConfig = config;

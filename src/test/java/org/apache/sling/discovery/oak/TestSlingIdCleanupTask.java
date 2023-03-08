@@ -40,7 +40,6 @@ import java.util.UUID;
 
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
-import org.apache.sling.api.resource.PersistenceException;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
@@ -192,6 +191,8 @@ public class TestSlingIdCleanupTask {
         scheduler = createScheduler();
         factory = instance.getResourceResolverFactory();
         config = new OakTestConfig();
+        System.setProperty(
+                SlingIdCleanupTask.SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME, "true");
         cleanupTask = SlingIdCleanupTask.create(scheduler, factory, config,
                 initialDelayMillis, intervalMillis, batchSize, minCreationAgeMillis);
     }
@@ -203,6 +204,8 @@ public class TestSlingIdCleanupTask {
             instance.stop();
             instance = null;
         }
+        System.clearProperty(
+                SlingIdCleanupTask.SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME);
     }
 
     private TopologyView newView() {
@@ -407,6 +410,28 @@ public class TestSlingIdCleanupTask {
         assertEquals(0, cleanupTask.getDeleteCount());
         waitForRunCount(cleanupTask, 1, 5000);
         assertEquals(10, cleanupTask.getDeleteCount());
+    }
+
+    @Test
+    public void testDisabled() throws Exception {
+        createCleanupTask(1000, 86400000);
+        System.setProperty(
+                SlingIdCleanupTask.SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME, "false");
+        assertEquals(0, cleanupTask.getDeleteCount());
+        createSlingIds(5, 10, 0);
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        cleanupTask.handleTopologyEvent(newChangingEvent(view1));
+        assertEquals(0, cleanupTask.getDeleteCount());
+
+        TopologyView view2 = newView();
+        cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        Thread.sleep(500);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        Thread.sleep(1000);
+        assertEquals(0, cleanupTask.getRunCount());
+        assertEquals(0, cleanupTask.getDeleteCount());
     }
 
     /**
