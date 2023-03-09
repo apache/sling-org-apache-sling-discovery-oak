@@ -19,6 +19,8 @@
 package org.apache.sling.discovery.oak;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -183,6 +185,13 @@ public class TestSlingIdCleanupTask {
 
     private void createCleanupTask(int initialDelayMillis, int intervalMillis,
             int batchSize, long minCreationAgeMillis) throws Exception {
+        createCleanupTask(initialDelayMillis, intervalMillis, batchSize,
+                minCreationAgeMillis, SlingIdCleanupTask.MIN_CLEANUP_DELAY_MILLIS);
+    }
+
+    private void createCleanupTask(int initialDelayMillis, int intervalMillis,
+            int batchSize, long minCreationAgeMillis, long minCleanupDelayMillis)
+            throws Exception {
         OakVirtualInstanceBuilder builder = (OakVirtualInstanceBuilder) new OakVirtualInstanceBuilder()
                 .setDebugName("instance").newRepository("/foo/bar/", true)
                 .setConnectorPingInterval(999).setConnectorPingTimeout(999);
@@ -194,7 +203,8 @@ public class TestSlingIdCleanupTask {
         System.setProperty(
                 SlingIdCleanupTask.SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME, "true");
         cleanupTask = SlingIdCleanupTask.create(scheduler, factory, config,
-                initialDelayMillis, intervalMillis, batchSize, minCreationAgeMillis);
+                initialDelayMillis, intervalMillis, batchSize, minCreationAgeMillis,
+                minCleanupDelayMillis);
     }
 
     @After
@@ -535,6 +545,136 @@ public class TestSlingIdCleanupTask {
     }
 
     @Test
+    public void testOldSlingIdsButNowActive() throws InterruptedException, Exception {
+        doTestOldSlingIdsButActive(4, 9, 7);
+    }
+
+    @Test
+    public void testOldSlingIdButRecentlyActive() throws Exception, InterruptedException {
+        createCleanupTask(1000, 1000, 50, 86400000, -1);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        int currentIds = 4;
+        int oldIds = 9;
+        int activeIds = 7;
+        int activeOldIds = Math.max(0, activeIds - currentIds);
+        List<String> slingIds = createSlingIds(currentIds, oldIds, activeOldIds);
+
+        final String clusterViewId = UUID.randomUUID().toString();
+        DefaultClusterView cluster = new DefaultClusterView(clusterViewId);
+        DummyTopologyView view1 = new DummyTopologyView();
+
+        Iterator<String> it = slingIds.iterator();
+        String leaderSlingId = it.next(); // first is declared leader
+        String localSlignId = leaderSlingId; // and is local too
+        int idx = 0;
+        for (String aSlingId : slingIds) {
+            view1.addInstance(aSlingId, cluster, aSlingId.equals(leaderSlingId),
+                    aSlingId.equals(localSlignId));
+            if (++idx >= activeIds) {
+                break;
+            }
+        }
+
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        assertEquals(0, cleanupTask.getDeleteCount());
+        assertEquals(0, cleanupTask.getCompletionCount());
+        waitForRunCount(cleanupTask, 1, 5000);
+        int expectedDeleteCount = oldIds - activeOldIds;
+        assertEquals(expectedDeleteCount, cleanupTask.getDeleteCount());
+        assertNoGarbageLeft(instance, config, view1, 86400000);
+        idx = 0;
+        for (String aSlingId : slingIds) {
+            logger.info("checking idx=" + idx + ", slingId=" + aSlingId);
+            if (idx < 2) {
+                // those are currently active and should of course not have been deleted
+                assertStatus(instance, config, aSlingId, false);
+            } else if (idx < activeIds) {
+                // same here, while they are not currently active, they were active during
+                // leader's lifetime
+                assertStatus(instance, config, aSlingId, false);
+            } else {
+                // for the rest: those should be deleted
+                assertStatus(instance, config, aSlingId, true);
+            }
+            idx++;
+        }
+
+        // in addition to the above, which is the same as doTestOldSlingIdsButActive,
+        // we now simulate some activeIds crashing.
+        // in particular some old and some current ones.
+        // the logic should be that, as long as the leader at some previous
+        // time was in a topology with those now crashed active ids, it would
+        // not delete them.
+        // this is to avoid a race condition that could other wise happen
+        // between a crash looping instance and this cleanup mechanism
+        cluster = new DefaultClusterView(clusterViewId);
+        DummyTopologyView view2 = new DummyTopologyView();
+
+        it = slingIds.iterator();
+        leaderSlingId = it.next(); // first is declared leader
+        localSlignId = leaderSlingId; // and is local too
+        idx = 0;
+        for (String aSlingId : slingIds) {
+            view2.addInstance(aSlingId, cluster, aSlingId.equals(leaderSlingId),
+                    aSlingId.equals(localSlignId));
+            if (++idx >= 2) { // let's have only 2 active instances
+                break;
+            }
+        }
+        cleanupTask.handleTopologyEvent(newChangingEvent(view1));
+        assertEquals(1, cleanupTask.getCompletionCount());
+        cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        assertEquals(expectedDeleteCount, cleanupTask.getDeleteCount());
+        waitForRunCount(cleanupTask, 2, 5000);
+        assertEquals(2, cleanupTask.getCompletionCount());
+        // no further cleanup should have happened
+        assertEquals(expectedDeleteCount, cleanupTask.getDeleteCount());
+        // now check for correct non-/deletion
+        assertNoGarbageLeft(instance, config, view1, 86400000);
+        idx = 0;
+        for (String aSlingId : slingIds) {
+            if (idx < 2) {
+                // those are currently active and should of course not have been deleted
+                assertStatus(instance, config, aSlingId, false);
+            } else if (idx < activeIds) {
+                // same here, while they are not currently active, they were active during
+                // leader's lifetime
+                assertStatus(instance, config, aSlingId, false);
+            } else {
+                // for the rest: those should be deleted
+                assertStatus(instance, config, aSlingId, true);
+            }
+            idx++;
+        }
+    }
+
+    private void assertStatus(VirtualInstance i, Config c, String slingId,
+            boolean deleted) throws Exception {
+        ResourceResolverFactory f = i.getResourceResolverFactory();
+
+        ResourceResolver resolver = null;
+        resolver = f.getServiceResourceResolver(null);
+
+        final Resource clusterInstances = ResourceHelper.getOrCreateResource(resolver,
+                c.getClusterInstancesPath());
+        final Resource idMap = ResourceHelper.getOrCreateResource(resolver,
+                c.getIdMapPath());
+        final Resource syncTokens = ResourceHelper.getOrCreateResource(resolver,
+                c.getSyncTokenPath());
+        resolver.refresh();
+
+        if (deleted) {
+            assertNull(clusterInstances.getChild(slingId));
+            assertNull(idMap.getValueMap().get(slingId));
+            assertNull(syncTokens.getValueMap().get(slingId));
+        } else {
+            assertNotNull(clusterInstances.getChild(slingId));
+            assertNotNull(idMap.getValueMap().get(slingId));
+            assertNotNull(syncTokens.getValueMap().get(slingId));
+        }
+    }
+
+    @Test
     public void testOldSlingIdButActive_all() throws Exception {
         doTestOldSlingIdsButActive(5, 10, 15);
     }
@@ -634,7 +774,6 @@ public class TestSlingIdCleanupTask {
                 c.getIdMapPath());
         final Resource syncTokens = ResourceHelper.getOrCreateResource(resolver,
                 c.getSyncTokenPath());
-        resolver.revert();
         resolver.refresh();
 
         final ValueMap idMapMap = idMap.adaptTo(ValueMap.class);
@@ -733,8 +872,7 @@ public class TestSlingIdCleanupTask {
             return;
         }
 
-        final Resource resource = ResourceHelper.getOrCreateResource(resourceResolver,
-                path);
+        ResourceHelper.getOrCreateResource(resourceResolver, path);
         resourceResolver.commit();
     }
 

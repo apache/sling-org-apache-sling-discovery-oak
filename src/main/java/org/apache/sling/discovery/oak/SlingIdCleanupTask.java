@@ -90,7 +90,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     final static String SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.slingidcleanup.enabled";
 
-    private final static long MIN_CLEANUP_DELAY_MILLIS = 46800000; // 13 hours, to intraday load balance
+    final static long MIN_CLEANUP_DELAY_MILLIS = 46800000; // 13 hours, to intraday load balance
 
     /**
      * default age is 1 week : an instance that is not in the current topology,
@@ -177,6 +177,17 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     private long lastSuccessfulRun = -1;
 
+    /**
+     * Minimal delay after a successful cleanup round, in millis
+     */
+    private long minCleanupDelayMillis = MIN_CLEANUP_DELAY_MILLIS;
+
+    /**
+     * contains all slingIds ever seen by this instance - should not be a long list
+     * so not a memory issue
+     */
+    private Set<String> seenInstances = new HashSet<>();
+
     @ObjectClassDefinition(name = "Apache Sling Discovery Oak SlingId Cleanup Task", description = "This task is in charge of cleaning up old SlingIds from the repository.")
     public @interface Conf {
 
@@ -198,11 +209,12 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      */
     static SlingIdCleanupTask create(Scheduler scheduler, ResourceResolverFactory factory,
             Config config, int initialDelayMillis, int intervalMillis, int batchSize,
-            long minCreationAgeMillis) {
+            long minCreationAgeMillis, long minCleanupDelayMillis) {
         final SlingIdCleanupTask s = new SlingIdCleanupTask();
         s.scheduler = scheduler;
         s.resourceResolverFactory = factory;
         s.config = config;
+        s.minCleanupDelayMillis = minCleanupDelayMillis;
         s.config(initialDelayMillis, intervalMillis, batchSize, minCreationAgeMillis);
         return s;
     }
@@ -260,6 +272,10 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         } else {
             hasTopology = true;
             currentView = newView;
+            for (InstanceDescription id : newView.getLocalInstance().getClusterView()
+                    .getInstances()) {
+                seenInstances.add(id.getSlingId());
+            }
             if (newView.getLocalInstance().isLeader()) {
                 // only execute on leader
                 recreateSchedule();
@@ -335,11 +351,11 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
     @Override
     public void run() {
         if (lastSuccessfulRun > 0 && System.currentTimeMillis()
-                - lastSuccessfulRun < MIN_CLEANUP_DELAY_MILLIS) {
+                - lastSuccessfulRun < minCleanupDelayMillis) {
             logger.debug(
                     "run: last cleanup was {} millis ago, which is less than {} millis, therefore not cleaning up yet.",
                     System.currentTimeMillis() - lastSuccessfulRun,
-                    MIN_CLEANUP_DELAY_MILLIS);
+                    minCleanupDelayMillis);
             recreateSchedule();
             return;
         }
@@ -533,6 +549,10 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         logger.trace("deleteIfOldSlingId : handling slingId = {}", slingId);
         if (activeSlingIds.contains(slingId)) {
             logger.trace("deleteIfOldSlingId : slingId is currently active : {}",
+                    slingId);
+            return false;
+        } else if (seenInstances.contains(slingId)) {
+            logger.trace("deleteIfOldSlingId : slingId seen active previously : {}",
                     slingId);
             return false;
         }
