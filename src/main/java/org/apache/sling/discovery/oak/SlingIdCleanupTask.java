@@ -90,7 +90,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
 
     final static String SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME = "org.apache.sling.discovery.oak.slingidcleanup.enabled";
 
-    final static long MIN_CLEANUP_DELAY_MILLIS = 46800000; // 13 hours, to intraday load balance
+    /** default minimal cleanup delay at 13h, to intraday load balance */
+    final static long MIN_CLEANUP_DELAY_MILLIS = 46800000;
 
     /**
      * default age is 1 week : an instance that is not in the current topology,
@@ -449,12 +450,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             int localBatchSize = batchSize;
             long localMinCreationAgeMillis = minCreationAgeMillis;
             for (Resource resource : clusterInstances.getChildren()) {
-                if (!hasTopology || currentView != localCurrentView
-                        || !localCurrentView.isCurrent()) {
-                    // we got interrupted during cleanup
-                    // let's not commit at all then
-                    logger.debug(
-                            "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
+                if (!topologyUnchanged(localCurrentView)) {
                     return true;
                 }
                 final String slingId = resource.getName();
@@ -477,12 +473,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                         continue;
                     }
                     logger.info("syncToken : " + slingId);
-                    if (!hasTopology || currentView != localCurrentView
-                            || !localCurrentView.isCurrent()) {
-                        // we got interrupted during cleanup
-                        // let's not commit at all then
-                        logger.debug(
-                                "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
+                    if (!topologyUnchanged(localCurrentView)) {
                         return true;
                     }
                     Resource resourceOrNull = clusterInstances.getChild(slingId);
@@ -496,12 +487,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     }
                 }
             }
-            if (!hasTopology || currentView != localCurrentView
-                    || !localCurrentView.isCurrent()) {
-                // we got interrupted during cleanup
-                // let's not commit at all then
-                logger.debug(
-                        "cleanup : topology changing during cleanup - not committing this time - stopping for now.");
+            if (!topologyUnchanged(localCurrentView)) {
                 return true;
             }
             if (removed > 0) {
@@ -524,6 +510,19 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     "Exception while talking to repository (" + e + ")", e);
         } finally {
             logger.debug("cleanup: done.");
+        }
+    }
+
+    private boolean topologyUnchanged(TopologyView localCurrentView) {
+        if (!hasTopology || currentView != localCurrentView
+                || !localCurrentView.isCurrent()) {
+            // we got interrupted during cleanup
+            // let's not commit at all then
+            logger.debug(
+                    "topologyUnchanged : topology changing during cleanup - not committing this time - stopping for now.");
+            return false;
+        } else {
+            return true;
         }
     }
 
