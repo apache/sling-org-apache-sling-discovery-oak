@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
  * A slingId is considered garbage when:
  * <ul>
  * <li>it is not in the current topology</li>
+ * <li>was not ever seen in previous topologies seen by the then leader instance</li>
  * <li>it is not in the current idmap (where clusterNodeIds are reused hence
  * that list stays small and does not need cleanup)</li>
  * <li>its leaderElectionId was created more than 7 days ago (the
