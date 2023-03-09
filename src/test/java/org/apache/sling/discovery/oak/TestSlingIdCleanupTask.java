@@ -206,6 +206,10 @@ public class TestSlingIdCleanupTask {
         }
         System.clearProperty(
                 SlingIdCleanupTask.SLINGID_CLEANUP_ENABLED_SYSTEM_PROPERTY_NAME);
+        if (cleanupTask != null) {
+            cleanupTask.deactivate();
+            cleanupTask = null;
+        }
     }
 
     private TopologyView newView() {
