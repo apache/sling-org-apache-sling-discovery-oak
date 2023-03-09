@@ -505,7 +505,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                 return true;
             }
             if (removed > 0) {
-                // then we didn't change anything, let's quit
+                // only if we removed something we commit
                 resolver.commit();
                 logger.info(
                         "cleanup : removed {} old slingIds (batch size : {}), potentially has more: {}",
