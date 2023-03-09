@@ -84,6 +84,13 @@ import org.slf4j.LoggerFactory;
  * stop at the batchSize of 50 deletions</li>
  * </ul>
  * All parameters mentioned above can be configured.
+ * <p>
+ * Additionally, the cleanup is skipped for 13 hours after a successful cleanup.
+ * This is to avoid unnecessary load on the repository. The number of 13
+ * incorporates some heuristics such as : about 2 cleanup rounds per day maximum
+ * makes sense, if a leader is very long living, then the 1 additional hour
+ * makes it spread somewhat throughout the day. This is to further minimize any
+ * load side-effects.
  */
 @Component
 @Designate(ocd = SlingIdCleanupTask.Conf.class)
