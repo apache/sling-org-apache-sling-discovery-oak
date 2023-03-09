@@ -261,7 +261,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             currentView = null;
             // cancel cleanup schedule
             stop();
-            logger.info("handleTopologyEvent: slingId cleanup is disabled");
+            logger.debug("handleTopologyEvent: slingId cleanup is disabled");
             return;
         }
         final TopologyView newView = event.getNewView();
@@ -472,7 +472,6 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                         // not a uuid
                         continue;
                     }
-                    logger.info("syncToken : " + slingId);
                     if (!topologyUnchanged(localCurrentView)) {
                         return true;
                     }
