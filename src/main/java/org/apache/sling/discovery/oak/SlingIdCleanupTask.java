@@ -409,39 +409,27 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return true;
         }
         final Set<String> activeSlingIds = getActiveSlingIdsFrom(localCurrentView);
-
         try (ResourceResolver resolver = localFactory.getServiceResourceResolver(null)) {
-
             final Resource clusterInstances = resolver
                     .getResource(localConfig.getClusterInstancesPath());
-            if (clusterInstances == null) {
-                logger.warn("cleanup: no resource found at {}, stopping.",
-                        localConfig.getClusterInstancesPath());
-                return false;
-            }
             final Resource idMap = resolver.getResource(localConfig.getIdMapPath());
-            if (idMap == null) {
-                logger.warn("cleanup: no resource found at {}, stopping.",
-                        localConfig.getIdMapPath());
-                return false;
-            }
             final Resource syncTokens = resolver
                     .getResource(localConfig.getSyncTokenPath());
-            if (syncTokens == null) {
-                logger.warn("cleanup: no resource found at {}, stopping.",
+            if (clusterInstances == null || idMap == null || syncTokens == null) {
+                logger.warn("cleanup: no resource found at {}, {} or {}, stopping.",
+                        localConfig.getClusterInstancesPath(), localConfig.getIdMapPath(),
                         localConfig.getSyncTokenPath());
                 return false;
             }
             resolver.refresh();
-
             final ValueMap idMapMap = idMap.adaptTo(ValueMap.class);
             final ModifiableValueMap syncTokenMap = syncTokens
                     .adaptTo(ModifiableValueMap.class);
             final Calendar now = Calendar.getInstance();
             int removed = 0;
             boolean mightHaveMore = false;
-            int localBatchSize = batchSize;
-            long localMinCreationAgeMillis = minCreationAgeMillis;
+            final int localBatchSize = batchSize;
+            final long localMinCreationAgeMillis = minCreationAgeMillis;
             for (Resource resource : clusterInstances.getChildren()) {
                 if (!topologyUnchanged(localCurrentView)) {
                     return true;
