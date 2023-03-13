@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.sling.api.resource.LoginException;
 import org.apache.sling.api.resource.ModifiableValueMap;
@@ -502,7 +503,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
     }
 
     private Set<String> getActiveSlingIds(final TopologyView localCurrentView) {
-        localCurrentView.getLocalInstance().getClusterView()
+        return localCurrentView.getLocalInstance().getClusterView()
                 .getInstances().stream().map(InstanceDescription::getSlingId).collect(Collectors.toSet());
     }
 
