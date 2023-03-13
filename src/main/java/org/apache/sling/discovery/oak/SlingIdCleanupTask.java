@@ -22,9 +22,9 @@ import static org.osgi.util.converter.Converters.standardConverter;
 
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -196,7 +196,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
      * contains all slingIds ever seen by this instance - should not be a long list
      * so not a memory issue
      */
-    private Set<String> seenInstances = new HashSet<>();
+    private Set<String> seenInstances = new CopyOnWriteArraySet<>();
 
     @ObjectClassDefinition(name = "Apache Sling Discovery Oak SlingId Cleanup Task", description = "This task is in charge of cleaning up old SlingIds from the repository.")
     public @interface Conf {
