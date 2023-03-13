@@ -239,8 +239,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         if (config == null) {
             return;
         }
-        config(config.slingid_cleanup_initial_delay(),
-                config.slingid_cleanup_interval(),
+        config(config.slingid_cleanup_initial_delay(), config.slingid_cleanup_interval(),
                 config.slingid_cleanup_batchsize(),
                 config.slingid_cleanup_min_creation_age());
     }
@@ -503,8 +502,9 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
     }
 
     private Set<String> getActiveSlingIds(final TopologyView localCurrentView) {
-        return localCurrentView.getLocalInstance().getClusterView()
-                .getInstances().stream().map(InstanceDescription::getSlingId).collect(Collectors.toSet());
+        return localCurrentView.getLocalInstance().getClusterView().getInstances()
+                .stream().map(InstanceDescription::getSlingId)
+                .collect(Collectors.toSet());
     }
 
     private boolean topologyChanged(TopologyView localCurrentView) {
