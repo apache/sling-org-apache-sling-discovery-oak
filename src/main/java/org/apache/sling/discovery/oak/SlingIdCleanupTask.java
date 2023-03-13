@@ -502,12 +502,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
     }
 
     private Set<String> getActiveSlingIds(final TopologyView localCurrentView) {
-        final Set<String> activeSlingIds = new HashSet<>();
-        for (InstanceDescription id : localCurrentView.getLocalInstance().getClusterView()
-                .getInstances()) {
-            activeSlingIds.add(id.getSlingId());
-        }
-        return activeSlingIds;
+        localCurrentView.getLocalInstance().getClusterView()
+                .getInstances().stream().map(InstanceDescription::getSlingId).collect(Collectors.toSet());
     }
 
     private boolean topologyUnchanged(TopologyView localCurrentView) {
