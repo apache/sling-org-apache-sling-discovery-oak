@@ -100,22 +100,22 @@ public class TestSlingIdCleanupTask {
         }
 
         @Override
-        public int org_apache_sling_discovery_oak_slingid_cleanup_initial_delay() {
+        public int slingid_cleanup_initial_delay() {
             return initialDelay;
         }
 
         @Override
-        public int org_apache_sling_discovery_oak_slingid_cleanup_interval() {
+        public int slingid_cleanup_interval() {
             return interval;
         }
 
         @Override
-        public int org_apache_sling_discovery_oak_slingid_cleanup_batchsize() {
+        public int slingid_cleanup_batchsize() {
             return batchSize;
         }
 
         @Override
-        public long org_apache_sling_discovery_oak_slingid_cleanup_min_creation_age() {
+        public long slingid_cleanup_min_creation_age() {
             return age;
         }
 

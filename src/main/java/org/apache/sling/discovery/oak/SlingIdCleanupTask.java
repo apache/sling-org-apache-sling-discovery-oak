@@ -201,16 +201,16 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
     public @interface Conf {
 
         @AttributeDefinition(name = "Cleanup initial delay milliseconds", description = "Number of milliseconds to initially wait for the first cleanup")
-        int org_apache_sling_discovery_oak_slingid_cleanup_initial_delay() default DEFAULT_CLEANUP_INITIAL_DELAY;
+        int slingid_cleanup_initial_delay() default DEFAULT_CLEANUP_INITIAL_DELAY;
 
         @AttributeDefinition(name = "Cleanup interval milliseconds", description = "Number of milliseconds after which to do another batch of cleaning up (if necessary)")
-        int org_apache_sling_discovery_oak_slingid_cleanup_interval() default DEFAULT_CLEANUP_INTERVAL;
+        int slingid_cleanup_interval() default DEFAULT_CLEANUP_INTERVAL;
 
         @AttributeDefinition(name = "Cleanup batch size", description = "Maximum number of slingIds to cleanup in one batch.")
-        int org_apache_sling_discovery_oak_slingid_cleanup_batchsize() default DEFAULT_CLEANUP_BATCH_SIZE;
+        int slingid_cleanup_batchsize() default DEFAULT_CLEANUP_BATCH_SIZE;
 
         @AttributeDefinition(name = "Cleanup minimum creation age", description = "Minimum number of milliseconds since the slingId was created.")
-        long org_apache_sling_discovery_oak_slingid_cleanup_min_creation_age() default DEFAULT_MIN_CREATION_AGE_MILLIS;
+        long slingid_cleanup_min_creation_age() default DEFAULT_MIN_CREATION_AGE_MILLIS;
     }
 
     /**
@@ -238,10 +238,10 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         if (config == null) {
             return;
         }
-        config(config.org_apache_sling_discovery_oak_slingid_cleanup_initial_delay(),
-                config.org_apache_sling_discovery_oak_slingid_cleanup_interval(),
-                config.org_apache_sling_discovery_oak_slingid_cleanup_batchsize(),
-                config.org_apache_sling_discovery_oak_slingid_cleanup_min_creation_age());
+        config(config.slingid_cleanup_initial_delay(),
+                config.slingid_cleanup_interval(),
+                config.slingid_cleanup_batchsize(),
+                config.slingid_cleanup_min_creation_age());
     }
 
     @Deactivate
