@@ -281,7 +281,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         } else {
             hasTopology = true;
             currentView = newView;
-            seenInstances.addAll(getActiveSlingIdsFrom(newView));
+            seenInstances.addAll(getActiveSlingIds(newView));
             if (newView.getLocalInstance().isLeader()) {
                 // only execute on leader
                 recreateSchedule();
@@ -416,7 +416,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     localCurrentView);
             return true;
         }
-        final Set<String> activeSlingIds = getActiveSlingIdsFrom(localCurrentView);
+        final Set<String> activeSlingIds = getActiveSlingIds(localCurrentView);
         try (ResourceResolver resolver = localFactory.getServiceResourceResolver(null)) {
             final Resource clusterInstances = resolver
                     .getResource(localConfig.getClusterInstancesPath());
@@ -501,7 +501,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
     }
 
-    private Set<String> getActiveSlingIdsFrom(final TopologyView localCurrentView) {
+    private Set<String> getActiveSlingIds(final TopologyView localCurrentView) {
         final Set<String> activeSlingIds = new HashSet<>();
         for (InstanceDescription id : localCurrentView.getLocalInstance().getClusterView()
                 .getInstances()) {
