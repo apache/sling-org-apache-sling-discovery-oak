@@ -440,7 +440,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             final int localBatchSize = batchSize;
             final long localMinCreationAgeMillis = minCreationAgeMillis;
             for (Resource resource : clusterInstances.getChildren()) {
-                if (!topologyUnchanged(localCurrentView)) {
+                if (topologyChanged(localCurrentView)) {
                     return true;
                 }
                 final String slingId = resource.getName();
@@ -462,7 +462,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                         // not a uuid
                         continue;
                     }
-                    if (!topologyUnchanged(localCurrentView)) {
+                    if (topologyChanged(localCurrentView)) {
                         return true;
                     }
                     Resource resourceOrNull = clusterInstances.getChild(slingId);
@@ -476,7 +476,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                     }
                 }
             }
-            if (!topologyUnchanged(localCurrentView)) {
+            if (topologyChanged(localCurrentView)) {
                 return true;
             }
             if (removed > 0) {
@@ -507,16 +507,16 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
                 .getInstances().stream().map(InstanceDescription::getSlingId).collect(Collectors.toSet());
     }
 
-    private boolean topologyUnchanged(TopologyView localCurrentView) {
+    private boolean topologyChanged(TopologyView localCurrentView) {
         if (!hasTopology || currentView != localCurrentView
                 || !localCurrentView.isCurrent()) {
             // we got interrupted during cleanup
             // let's not commit at all then
             logger.debug(
-                    "topologyUnchanged : topology changing during cleanup - not committing this time - stopping for now.");
-            return false;
-        } else {
+                    "topologyChanged : topology changing during cleanup - not committing this time - stopping for now.");
             return true;
+        } else {
+            return false;
         }
     }
 
