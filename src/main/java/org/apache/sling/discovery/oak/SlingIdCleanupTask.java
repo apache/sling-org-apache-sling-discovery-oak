@@ -554,8 +554,8 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         if (resourceOrNull != null) {
             Object clusterNodeId = idMapMap.get(slingId);
             if (clusterNodeId == null) {
-                logger.trace("deleteIfOldSlingId : slingId {} not recently in use : {}",
-                        slingId, clusterNodeId);
+                logger.trace("deleteIfOldSlingId : slingId {} not recently in use",
+                        slingId);
             } else {
                 logger.trace("deleteIfOldSlingId : slingId {} WAS recently in use : {}",
                         slingId, clusterNodeId);
