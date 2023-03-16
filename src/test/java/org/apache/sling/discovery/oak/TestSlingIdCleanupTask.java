@@ -61,7 +61,6 @@ import org.apache.sling.discovery.oak.its.setup.OakTestConfig;
 import org.apache.sling.discovery.oak.its.setup.OakVirtualInstanceBuilder;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.osgi.framework.BundleContext;
@@ -428,7 +427,6 @@ public class TestSlingIdCleanupTask {
     }
 
     @Test
-    @Ignore(value = "currently fails")
     public void testTopologyThenPropertiesChanged() throws Exception {
         createCleanupTask(1000, 86400000);
         assertEquals(0, cleanupTask.getDeleteCount());

@@ -273,12 +273,16 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         final TopologyView newView = event.getNewView();
-        if (newView == null || event.getType() == Type.PROPERTIES_CHANGED) {
+        if (event.getType() == Type.PROPERTIES_CHANGED) {
+            // ignore those
+        } else if (newView == null) {
+            // that's a TOPOLOGY_CHANGING
             hasTopology = false; // stops potentially ongoing deletion
             currentView = null;
             // cancel cleanup schedule
             stop();
         } else {
+            // that's TOPOLOGY_INIT or TOPOLOGY_CHANGED
             hasTopology = true;
             currentView = newView;
             seenInstances.addAll(getActiveSlingIds(newView));
@@ -303,7 +307,11 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             return;
         }
         final boolean unscheduled = localScheduler.unschedule(SCHEDULE_NAME);
-        logger.debug("stop: unschedule result={}", unscheduled);
+        if (unscheduled) {
+            logger.info("stop: unscheduled");
+        } else {
+            logger.debug("stop: unschedule was not necessary");
+        }
     }
 
     /**
@@ -340,7 +348,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
         }
         cal.add(Calendar.MILLISECOND, delayMillis);
         final Date scheduledDate = cal.getTime();
-        logger.debug(
+        logger.info(
                 "recreateSchedule: scheduling a cleanup in {} milliseconds from now, which is: {}",
                 delayMillis, scheduledDate);
         ScheduleOptions options = localScheduler.AT(scheduledDate);
