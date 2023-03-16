@@ -61,6 +61,7 @@ import org.apache.sling.discovery.oak.its.setup.OakTestConfig;
 import org.apache.sling.discovery.oak.its.setup.OakVirtualInstanceBuilder;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.osgi.framework.BundleContext;
@@ -420,6 +421,28 @@ public class TestSlingIdCleanupTask {
 
         TopologyView view2 = newView();
         cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        Thread.sleep(500);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        waitForRunCount(cleanupTask, 1, 5000);
+        assertEquals(10, cleanupTask.getDeleteCount());
+    }
+
+    @Test
+    @Ignore(value = "currently fails")
+    public void testTopologyThenPropertiesChanged() throws Exception {
+        createCleanupTask(1000, 86400000);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        createSlingIds(5, 10, 0);
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        cleanupTask.handleTopologyEvent(newChangingEvent(view1));
+        assertEquals(0, cleanupTask.getDeleteCount());
+
+        TopologyView view2 = newView();
+        cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        // below properties changed event must not stop the cleanup
+        cleanupTask.handleTopologyEvent(newPropertiesChangedEvent(view1, view2));
         Thread.sleep(500);
         assertEquals(0, cleanupTask.getDeleteCount());
         waitForRunCount(cleanupTask, 1, 5000);
