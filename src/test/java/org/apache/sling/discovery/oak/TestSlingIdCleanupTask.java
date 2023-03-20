@@ -427,6 +427,27 @@ public class TestSlingIdCleanupTask {
     }
 
     @Test
+    public void testTopologyThenPropertiesChanged() throws Exception {
+        createCleanupTask(1000, 86400000);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        createSlingIds(5, 10, 0);
+
+        TopologyView view1 = newView();
+        cleanupTask.handleTopologyEvent(newInitEvent(view1));
+        cleanupTask.handleTopologyEvent(newChangingEvent(view1));
+        assertEquals(0, cleanupTask.getDeleteCount());
+
+        TopologyView view2 = newView();
+        cleanupTask.handleTopologyEvent(newChangedEvent(view1, view2));
+        // below properties changed event must not stop the cleanup
+        cleanupTask.handleTopologyEvent(newPropertiesChangedEvent(view1, view2));
+        Thread.sleep(500);
+        assertEquals(0, cleanupTask.getDeleteCount());
+        waitForRunCount(cleanupTask, 1, 5000);
+        assertEquals(10, cleanupTask.getDeleteCount());
+    }
+
+    @Test
     public void testRepetitionDelay() throws Exception {
         createCleanupTask(1000, 86400000);
         createSlingIds(5, 10, 0);
