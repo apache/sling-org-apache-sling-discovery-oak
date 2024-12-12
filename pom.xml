@@ -22,39 +22,37 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.sling</groupId>
-        <artifactId>sling</artifactId>
-        <version>29</version>
+        <artifactId>sling-bundle-parent</artifactId>
+        <version>52</version>
         <relativePath />
     </parent>
 
     <artifactId>org.apache.sling.discovery.oak</artifactId>
-    <packaging>bundle</packaging>
-    <version>1.2.37-SNAPSHOT</version>
+    <version>1.2.45-SNAPSHOT</version>
 
     <name>Apache Sling Oak-Based Discovery Service</name>
     <description>Implementation of Apache Sling Discovery based on Jackrabbit Oak using its discovery-lite descriptor for in-cluster view detection and a TopologyView through HTTP POST heartbeats announcing sub-topologies to each other.</description>
 
     <properties>
-      <jackrabbit.version>2.12.2</jackrabbit.version>
-      <oak.version>1.4.4</oak.version>
-      <!-- by default Slow tests are excluded - use -PincludeSlowTests to include them -->
-      <sling.excluded.surefire.groups>org.apache.sling.commons.testing.junit.categories.Slow</sling.excluded.surefire.groups>
-      <sling.java.version>7</sling.java.version>
+        <sling.java.version>8</sling.java.version>
+        <jackrabbit.version>2.14.3</jackrabbit.version>
+        <oak.version>1.4.4</oak.version>
+        <!-- by default Slow tests are excluded - use -PincludeSlowTests to include them -->
+        <sling.excluded.surefire.groups>org.apache.sling.commons.testing.junit.categories.Slow</sling.excluded.surefire.groups>
     </properties>
 
     <scm>
         <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-discovery-oak.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-org-apache-sling-discovery-oak.git</developerConnection>
-        <url>https://gitbox.apache.org/repos/asf?p=sling-org-apache-sling-discovery-oak.git</url>
-      <tag>HEAD</tag>
-  </scm>
+        <url>https://github.com/apache/sling-org-apache-sling-discovery-oak.git</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <build>
         <plugins>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.6</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -77,96 +75,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M4</version>
                 <configuration>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <argLine>${jacoco.command} -Xmx2048m</argLine>
                     <excludedGroups>${sling.excluded.surefire.groups}</excludedGroups>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-scr-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.felix</groupId>
-                <artifactId>maven-bundle-plugin</artifactId>
-                <extensions>true</extensions>
-                <configuration>
-                  <instructions>
-                    <Import-Package>
-                      <!-- WebConsole support is optional -->
-                      org.apache.felix.webconsole;resolution:=optional,
-                      org.apache.felix.hc.api;resolution:=optional,
-                      *
-                    </Import-Package>
-		            <Embed-Dependency>
-		              commons-net;inline=org/apache/commons/net/util/SubnetUtils*
-		            </Embed-Dependency>
-                <Export-Package>
-                  !org.apache.sling.discovery.oak
-                </Export-Package>
-                <!-- remove when upgrading to bnd Maven plugin -->
-                <Provide-Capability><![CDATA[
-                  osgi.service;objectClass:List<String>="org.apache.sling.discovery.oak.Config,org.apache.sling.discovery.base.connectors.BaseConfig,org.apache.sling.discovery.commons.providers.spi.base.DiscoveryLiteConfig"
-                ]]></Provide-Capability>
-		          </instructions>
-		        </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>set-bundle-required-execution-environment</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <configuration>
-                            <exportAntProperties>true</exportAntProperties>
-                            <target>
-                                <!--  apply fix as suggested in this comment:
-                                      https://issues.apache.org/jira/browse/MANTRUN-200?focusedCommentId=17016706&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-17016706 -->
-                                <property name="plugin_classpath" refid="maven.plugin.classpath" />
-                                <script language="javascript" classpath="${plugin_classpath}">var System = java.lang.System;
-                                            var bree = "JavaSE-1.6";
-                                            var animalSnifferSignaturesVersion = "6";
-                                            var slingJavaVersion = System.getProperty("sling.java.version");
-                                            if (!slingJavaVersion) {
-                                                slingJavaVersion = project.getProperty("sling.java.version");
-                                            }
-                                            if (slingJavaVersion == "7") {
-                                                animalSnifferSignaturesVersion = "7";
-                                                bree = "JavaSE-1.7";
-                                                System.out.println("Setting Bundle-RequiredExecutionEnvironment=" + bree + " from sling.java.version=" + slingJavaVersion);
-                                            } else if ( slingJavaVersion == "8") {
-                                                animalSnifferSignaturesVersion = "8";
-                                                bree = "JavaSE-1.8";
-                                                System.out.println("Setting Bundle-RequiredExecutionEnvironment=" + bree + " from sling.java.version=" + slingJavaVersion);
-                                            } else if (slingJavaVersion != "6") {
-                                                System.out.println("Unsupported sling.java.version=" + slingJavaVersion + "; must be 6, 7 or 8.");
-                                                throw "sling.java.version must be 6, 7 or 8";
-                                            }
-                                            project.setProperty("sling.bree", bree);
-                                            project.setProperty("sling.animalSignatures.version", animalSnifferSignaturesVersion);</script>
-                            </target>
-                        </configuration>
-                    </execution>
-                </executions>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.ant</groupId>
-                        <artifactId>ant-apache-regexp</artifactId>
-	                    <version>1.7.1</version>
-                        <scope>runtime</scope>
-                    </dependency>
-                    <dependency>
-                        <groupId>jakarta-regexp</groupId>
-                        <artifactId>jakarta-regexp</artifactId>
-                        <version>1.4</version>
-                        <scope>compile</scope>
-                    </dependency>
-                </dependencies>
             </plugin>
         </plugins>
     </build>
@@ -183,28 +96,41 @@
     </profiles>
     <dependencies>
         <dependency>
-            <groupId>org.apache.felix</groupId>
-            <artifactId>org.apache.felix.scr.annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>biz.aQute</groupId>
-            <artifactId>bndlib</artifactId>
-            <version>1.50.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-	        <version>1.6.1</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.core</artifactId>
-            <version>4.1.0</version>
+            <artifactId>org.osgi.framework</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.compendium</artifactId>
-            <version>4.1.0</version>
+            <artifactId>org.osgi.service.component</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.metatype.annotations</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.http</artifactId>
+            <version>1.2.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.util.converter</artifactId>
+            <version>1.0.9</version>
+            <scope>provided</scope>
         </dependency>
 		<dependency>
 			<groupId>org.apache.sling</groupId>
@@ -215,19 +141,12 @@
 		<dependency>
 			<groupId>javax.jcr</groupId>
 			<artifactId>jcr</artifactId>
-			<version>2.0</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.jackrabbit</groupId>
 			<artifactId>jackrabbit-api</artifactId>
 			<version>${jackrabbit.version}</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.sling</groupId>
-			<artifactId>org.apache.sling.commons.osgi</artifactId>
-			<version>2.1.0</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -245,7 +164,7 @@
 		<dependency>
 			<groupId>org.apache.sling</groupId>
 			<artifactId>org.apache.sling.discovery.commons</artifactId>
-			<version>1.0.27-SNAPSHOT</version>
+			<version>1.0.26</version>
             <scope>provided</scope>
 		</dependency>
         <!-- besides including discovery.commons' normal jar above, 
@@ -254,14 +173,14 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.discovery.commons</artifactId>
-            <version>1.0.27-SNAPSHOT</version>
+            <version>1.0.26</version>
             <scope>test</scope>
             <type>test-jar</type>
         </dependency>
 		<dependency>
 			<groupId>org.apache.sling</groupId>
 			<artifactId>org.apache.sling.discovery.base</artifactId>
-			<version>2.0.10</version>
+			<version>2.0.14</version>
             <scope>provided</scope>
 		</dependency>
         <!-- besides including discovery.base' normal jar above, 
@@ -270,7 +189,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.discovery.base</artifactId>
-            <version>2.0.10</version>
+            <version>2.0.14</version>
             <scope>test</scope>
             <type>test-jar</type>
         </dependency>
@@ -292,16 +211,10 @@
 			<version>3.0.0</version>
             <scope>provided</scope>
 		</dependency>
-	    <dependency>
-	      <groupId>org.eclipse.jetty</groupId>
-	      <artifactId>jetty-servlet</artifactId>
-	      <version>8.1.2.v20120308</version>
-	      <scope>test</scope>
-	    </dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
-            <version>2.4</version>
+			<artifactId>javax.servlet-api</artifactId>
+            <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
@@ -321,10 +234,30 @@
             <version>3.3</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+        	<groupId>org.apache.felix</groupId>
+        	<artifactId>org.apache.felix.healthcheck.api</artifactId>
+        	<version>2.0.0</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.osgi</groupId>
+                    <artifactId>osgi.core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
       <!-- Testing -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>8.1.2.v20120308</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit-addons</groupId>
@@ -333,27 +266,33 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jmock</groupId>
-            <artifactId>jmock-junit4</artifactId>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>4.4.0</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>1.9.5</version>
+            <groupId>org.apache.jackrabbit</groupId>
+            <artifactId>jackrabbit-core</artifactId>
+            <version>${jackrabbit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
         	<groupId>org.apache.sling</groupId>
         	<artifactId>org.apache.sling.commons.testing</artifactId>
-        	<version>2.0.26</version>
+        	<version>2.1.2</version>
         	<scope>test</scope>
             <exclusions>
+                <exclusion>
+                    <groupId>org.apache.jackrabbit</groupId>
+                    <artifactId>jackrabbit-core</artifactId>
+                </exclusion>
                 <!-- slf4j simple implementation logs INFO + higher to stdout (we don't want that behaviour) -->
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-simple</artifactId>
                 </exclusion>
-                <!--  also excluding jcl-over-slf4j as we need a newer vesion of this which is compatible with slf4j 1.6 -->
+                <!--  also excluding jcl-over-slf4j as we need a newer version of this which is compatible with slf4j 1.6 -->
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>jcl-over-slf4j</artifactId>
@@ -394,8 +333,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
-            <artifactId>org.apache.sling.testing.sling-mock</artifactId>
-            <version>1.2.0</version>
+            <artifactId>org.apache.sling.testing.sling-mock.junit4</artifactId>
+            <version>3.2.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -415,11 +354,6 @@
             <artifactId>oak-jcr</artifactId>
             <version>${oak.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-        	<groupId>org.apache.felix</groupId>
-        	<artifactId>org.apache.felix.healthcheck.api</artifactId>
-        	<version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>

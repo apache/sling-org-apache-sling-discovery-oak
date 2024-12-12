@@ -38,9 +38,11 @@ import org.apache.sling.commons.scheduler.Scheduler;
 import org.apache.sling.commons.scheduler.impl.QuartzScheduler;
 import org.apache.sling.commons.scheduler.impl.SchedulerServiceFactory;
 import org.apache.sling.commons.threads.impl.DefaultThreadPoolManager;
+import org.apache.sling.discovery.base.its.setup.VirtualInstance;
 import org.apache.sling.discovery.commons.providers.BaseTopologyView;
 import org.apache.sling.discovery.commons.providers.DefaultClusterView;
 import org.apache.sling.discovery.commons.providers.DummyTopologyView;
+import org.apache.sling.discovery.commons.providers.base.DummyListener;
 import org.apache.sling.discovery.commons.providers.base.DummyScheduler;
 import org.apache.sling.discovery.commons.providers.spi.LocalClusterView;
 import org.junit.After;
@@ -305,5 +307,13 @@ public class JoinerDelayTest {
         assertFalse(callbackSemaphore.tryAcquire());
         Thread.sleep(2500);
         assertTrue(callbackSemaphore.tryAcquire());
+    }
+
+    /** moved here for visibility reasons */
+    public static DummyListener newDummyListener(VirtualInstance instance) {
+        DummyListener listener = new DummyListener();
+        OakDiscoveryService discoveryService = (OakDiscoveryService) instance.getDiscoveryService();
+        discoveryService.bindTopologyEventListener(listener);
+        return listener;
     }
 }
