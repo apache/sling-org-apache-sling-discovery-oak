@@ -24,6 +24,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
+import java.util.HashSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -462,7 +463,7 @@ public class SlingIdCleanupTask implements TopologyEventListener, Runnable {
             }
             // if we're not already at the batch limit, check syncTokens too
             if (!mightHaveMore) {
-                for (String slingId : syncTokenMap.keySet()) {
+                for (String slingId : new HashSet<>(syncTokenMap.keySet())) {
                     try {
                         UUID.fromString(slingId);
                     } catch (Exception e) {
