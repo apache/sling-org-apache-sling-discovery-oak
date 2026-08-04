@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
@@ -488,24 +489,30 @@ public class OakDiscoveryService extends BaseDiscoveryService {
         final Config c = config;
         final String sid = slingId;
         if (rrf == null || c == null || sid == null) {
-            // cannot update the properties then..
             logger.debug("doUpdateProperties: too early to update the properties. "
                             + "resourceResolverFactory ({}), config ({}) or slingId ({}) not yet set.",
                     new Object[]{rrf, c, sid});
             return;
-        } else {
-            logger.debug("doUpdateProperties: updating properties now..");
         }
+        logger.debug("doUpdateProperties: updating properties now..");
 
+        persistProperties(rrf, c, sid, collectProviderProperties());
+
+        logger.debug("doUpdateProperties: updating properties done.");
+    }
+
+    private Map<String, String> collectProviderProperties() {
         final Map<String, String> newProps = new HashMap<>();
         for (final ProviderInfo info : this.providerInfos) {
             info.refreshProperties();
             newProps.putAll(info.properties);
         }
+        return newProps;
+    }
 
-        ResourceResolver resourceResolver = null;
-        try {
-            resourceResolver = rrf.getServiceResourceResolver(null);
+    private void persistProperties(final ResourceResolverFactory rrf, final Config c, final String sid,
+                                   final Map<String, String> newProps) {
+        try (ResourceResolver resourceResolver = rrf.getServiceResourceResolver(null)) {
 
             Resource myInstance = ResourceHelper
                     .getOrCreateResource(resourceResolver, c.getClusterInstancesPath() + "/" + sid + "/properties");
@@ -514,54 +521,49 @@ public class OakDiscoveryService extends BaseDiscoveryService {
             resourceResolver.revert();
             resourceResolver.refresh();
 
-            final ModifiableValueMap myInstanceMap = myInstance.adaptTo(ModifiableValueMap.class);
-            final Set<String> keys = new HashSet<String>(myInstanceMap.keySet());
-            for (final String key : keys) {
-                if (newProps.containsKey(key)) {
-                    // perfect
-                    continue;
-                } else if (key.indexOf(":") != -1) {
-                    // ignore
-                    continue;
-                } else {
-                    // remove
-                    myInstanceMap.remove(key);
-                }
-            }
-
-            boolean anyChanges = false;
-            for (final Entry<String, String> entry : newProps.entrySet()) {
-                Object existingValue = myInstanceMap.get(entry.getKey());
-                if (entry.getValue().equals(existingValue)) {
-                    // SLING-3389: dont rewrite the properties if nothing changed!
-                    if (logger.isDebugEnabled()) {
-                        logger.debug("doUpdateProperties: unchanged: {}={}", entry.getKey(), entry.getValue());
-                    }
-                    continue;
-                }
-                if (logger.isDebugEnabled()) {
-                    logger.debug("doUpdateProperties: changed: {}={}", entry.getKey(), entry.getValue());
-                }
-                anyChanges = true;
-                myInstanceMap.put(entry.getKey(), entry.getValue());
-            }
-
-            if (anyChanges) {
+            final ModifiableValueMap myInstanceMap = Objects.requireNonNull(
+                    myInstance.adaptTo(ModifiableValueMap.class),
+                    "adaptTo(ModifiableValueMap.class) returned null");
+            removeStaleKeys(myInstanceMap, newProps.keySet());
+            if (applyNewProperties(myInstanceMap, newProps)) {
                 resourceResolver.commit();
             }
         } catch (LoginException e) {
-            logger.error("handleEvent: could not log in administratively: " + e, e);
+            logger.error("persistProperties: could not log in administratively: {}", e, e);
             throw new RuntimeException("Could not log in to repository (" + e + ")", e);
         } catch (PersistenceException e) {
-            logger.error("handleEvent: got a PersistenceException: " + e, e);
-            throw new RuntimeException( "Exception while talking to repository (" + e + ")", e);
-        } finally {
-            if (resourceResolver != null) {
-                resourceResolver.close();
+            logger.error("persistProperties: got a PersistenceException: {}", e, e);
+            throw new RuntimeException("Exception while talking to repository (" + e + ")", e);
+        }
+    }
+
+    private void removeStaleKeys(final ModifiableValueMap map, final Set<String> newKeys) {
+        for (final String key : new HashSet<>(map.keySet())) {
+            // skip keys still present in newKeys, and namespaced keys
+            if (!newKeys.contains(key) && key.indexOf(':') == -1) {
+                map.remove(key);
             }
         }
+    }
 
-        logger.debug("doUpdateProperties: updating properties done.");
+    private boolean applyNewProperties(final ModifiableValueMap map, final Map<String, String> newProps) {
+        boolean anyChanges = false;
+        for (final Entry<String, String> entry : newProps.entrySet()) {
+            Object existingValue = map.get(entry.getKey());
+            if (entry.getValue().equals(existingValue)) {
+                // SLING-3389: dont rewrite the properties if nothing changed!
+                if (logger.isDebugEnabled()) {
+                    logger.debug("applyNewProperties: unchanged: {}={}", entry.getKey(), entry.getValue());
+                }
+                continue;
+            }
+            if (logger.isDebugEnabled()) {
+                logger.debug("applyNewProperties: changed: {}={}", entry.getKey(), entry.getValue());
+            }
+            anyChanges = true;
+            map.put(entry.getKey(), entry.getValue());
+        }
+        return anyChanges;
     }
 
     /**
